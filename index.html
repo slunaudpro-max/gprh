@@ -1,261 +1,45 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Gestion de Projets - Google Sheets</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .login-box {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            padding: 40px;
-            max-width: 400px;
-            width: 100%;
-        }
-
-        .login-box h2 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-
-        .login-box p {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 0.95rem;
-        }
-
-        .form-control {
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .btn-login {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            padding: 12px;
-            font-weight: 600;
-            border-radius: 8px;
-            transition: transform 0.3s;
-        }
-
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-            color: white;
-        }
-
-        .setup-info {
-            background: #f0f4ff;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-            font-size: 0.9rem;
-        }
-
-        .app-container {
-            display: none;
-            min-height: 100vh;
-            background: #f5f7fa;
-        }
-
-        .sidebar {
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            min-height: 100vh;
-            padding: 20px 0;
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 250px;
-            overflow-y: auto;
-            z-index: 1000;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            margin-bottom: 20px;
-        }
-
-        .sidebar-header h3 {
-            font-size: 1.3rem;
-            margin-bottom: 5px;
-        }
-
-        .sidebar-header p {
-            font-size: 0.85rem;
-            opacity: 0.9;
-        }
-
-        .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 12px 20px;
-            transition: all 0.3s;
-            border-left: 3px solid transparent;
-            cursor: pointer;
-        }
-
-        .nav-link:hover, .nav-link.active {
-            color: white;
-            background: rgba(255,255,255,0.1);
-            border-left-color: white;
-            text-decoration: none;
-        }
-
-        .main-content {
-            margin-left: 250px;
-            padding: 30px;
-        }
-
-        .header-bar {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-bar h1 {
-            color: #667eea;
-            margin: 0;
-            font-size: 1.8rem;
-        }
-
-        .user-info {
-            text-align: right;
-            color: #666;
-        }
-
-        .user-info p {
-            margin: 0;
-            font-size: 0.9rem;
-        }
-
-        .view-section {
-            display: none;
-        }
-
-        .view-section.active {
-            display: block;
-        }
-
-        .card {
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border: none;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 10px 10px 0 0 !important;
-            font-weight: 600;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #5568d3 0%, #6a3a91 100%);
-        }
-
-        .table {
-            background: white;
-        }
-
-        .task-card {
-            background: white;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .task-card:hover {
-            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-            transform: translateY(-2px);
-        }
-
-        .badge-priority {
-            font-size: 0.85rem;
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .spinner-border {
-            color: #667eea;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 200px;
-            }
-            .main-content {
-                margin-left: 200px;
-                padding: 15px;
-            }
-            .header-bar {
-                flex-direction: column;
-                gap: 10px;
-            }
-        }
+        /* -- Styles (identiques à ton original, compressés légèrement) -- */
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+        .login-container{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+        .login-box{background:#fff;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.3);padding:40px;max-width:400px;width:100%}
+        .login-box h2{color:#667eea;margin-bottom:10px;font-weight:700}
+        .login-box p{color:#666;margin-bottom:30px;font-size:.95rem}
+        .form-control{padding:12px;border:2px solid #e0e0e0;border-radius:8px;transition:all .3s}
+        .form-control:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+        .btn-login{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border:none;color:#fff;padding:12px;font-weight:600;border-radius:8px;transition:transform .3s}
+        .btn-login:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(102,126,234,.4);color:#fff}
+        .setup-info{background:#f0f4ff;border-left:4px solid #667eea;padding:15px;border-radius:5px;margin-top:20px;font-size:.9rem}
+        .app-container{display:none;min-height:100vh;background:#f5f7fa}
+        .sidebar{background:linear-gradient(180deg,#667eea 0%,#764ba2 100%);color:#fff;min-height:100vh;padding:20px 0;position:fixed;left:0;top:0;width:250px;overflow-y:auto;z-index:1000}
+        .sidebar-header{padding:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,.2);margin-bottom:20px}
+        .sidebar-header h3{font-size:1.3rem;margin-bottom:5px}
+        .nav-link{color:rgba(255,255,255,.8);padding:12px 20px;transition:all .3s;border-left:3px solid transparent;cursor:pointer}
+        .nav-link:hover,.nav-link.active{color:#fff;background:rgba(255,255,255,.1);border-left-color:#fff;text-decoration:none}
+        .main-content{margin-left:250px;padding:30px}
+        .header-bar{background:#fff;padding:20px;border-radius:10px;margin-bottom:30px;box-shadow:0 2px 10px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center}
+        .view-section{display:none}
+        .view-section.active{display:block}
+        .card{box-shadow:0 2px 10px rgba(0,0,0,.1);border:none;border-radius:10px;margin-bottom:20px}
+        .card-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border-radius:10px 10px 0 0 !important;font-weight:600}
+        .modal-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
+        .task-card{background:#fff;border-left:4px solid #667eea;padding:15px;border-radius:8px;margin-bottom:15px;cursor:pointer;transition:all .3s}
+        .task-card:hover{box-shadow:0 5px 15px rgba(0,0,0,.15);transform:translateY(-2px)}
+        .loading{display:none;text-align:center;padding:20px}
+        .loading.active{display:block}
+        .spinner-border{color:#667eea}
+        @media (max-width:768px){.sidebar{width:200px}.main-content{margin-left:200px;padding:15px}.header-bar{flex-direction:column;gap:10px}}
     </style>
 </head>
 <body>
@@ -264,7 +48,7 @@
         <div class="login-box">
             <h2><i class="bi bi-shield-lock"></i> Authentification</h2>
             <p>Connectez-vous à votre espace de gestion de projets</p>
-            
+
             <form id="loginForm">
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
@@ -281,7 +65,7 @@
 
             <div class="setup-info">
                 <strong>Identifiants de test:</strong>
-                <p style="margin-bottom: 0; margin-top: 10px;">
+                <p style="margin-bottom:0;margin-top:10px;">
                     Email: <code>admin@example.com</code><br>
                     Code: <code>1234</code>
                 </p>
@@ -298,31 +82,18 @@
                 <p>Gestion de Projets</p>
             </div>
             <nav class="nav flex-column">
-                <a class="nav-link active" href="#" data-view="dashboard">
-                    <i class="bi bi-speedometer2"></i> Tableau de bord
-                </a>
-                <a class="nav-link" href="#" data-view="projects">
-                    <i class="bi bi-folder"></i> Projets
-                </a>
-                <a class="nav-link" href="#" data-view="tasks">
-                    <i class="bi bi-list-task"></i> Tâches
-                </a>
-                <a class="nav-link" href="#" data-view="members">
-                    <i class="bi bi-people"></i> Membres
-                </a>
-                <a class="nav-link" href="#" data-view="admin">
-                    <i class="bi bi-gear"></i> Administration
-                </a>
-                <hr style="opacity: 0.3;">
-                <a class="nav-link" href="#" onclick="logout()">
-                    <i class="bi bi-box-arrow-left"></i> Déconnexion
-                </a>
+                <a class="nav-link active" href="#" data-view="dashboard"><i class="bi bi-speedometer2"></i> Tableau de bord</a>
+                <a class="nav-link" href="#" data-view="projects"><i class="bi bi-folder"></i> Projets</a>
+                <a class="nav-link" href="#" data-view="tasks"><i class="bi bi-list-task"></i> Tâches</a>
+                <a class="nav-link" href="#" data-view="members"><i class="bi bi-people"></i> Membres</a>
+                <a class="nav-link" href="#" data-view="admin"><i class="bi bi-gear"></i> Administration</a>
+                <hr style="opacity:.3">
+                <a class="nav-link" href="#" onclick="logout()"><i class="bi bi-box-arrow-left"></i> Déconnexion</a>
             </nav>
         </div>
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Header -->
             <div class="header-bar">
                 <h1 id="viewTitle">Tableau de bord</h1>
                 <div class="user-info">
@@ -331,58 +102,23 @@
                 </div>
             </div>
 
-            <!-- Loading -->
             <div id="loading" class="loading">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Chargement...</span>
-                </div>
+                <div class="spinner-border" role="status"><span class="visually-hidden">Chargement...</span></div>
                 <p class="mt-3">Chargement des données...</p>
             </div>
 
             <!-- Dashboard -->
             <div id="dashboard" class="view-section active">
                 <div class="row">
-                    <div class="col-md-3">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h3 id="projectCount" style="color: #667eea;">0</h3>
-                                <p>Projets accessibles</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h3 id="taskCount" style="color: #764ba2;">0</h3>
-                                <p>Tâches assignées</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h3 id="completedCount" style="color: #28a745;">0</h3>
-                                <p>Tâches terminées</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h3 id="lateCount" style="color: #dc3545;">0</h3>
-                                <p>Tâches en retard</p>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="col-md-3"><div class="card"><div class="card-body text-center"><h3 id="projectCount" style="color:#667eea">0</h3><p>Projets accessibles</p></div></div></div>
+                    <div class="col-md-3"><div class="card"><div class="card-body text-center"><h3 id="taskCount" style="color:#764ba2">0</h3><p>Tâches assignées</p></div></div></div>
+                    <div class="col-md-3"><div class="card"><div class="card-body text-center"><h3 id="completedCount" style="color:#28a745">0</h3><p>Tâches terminées</p></div></div></div>
+                    <div class="col-md-3"><div class="card"><div class="card-body text-center"><h3 id="lateCount" style="color:#dc3545">0</h3><p>Tâches en retard</p></div></div></div>
                 </div>
 
                 <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Tâches récentes</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="recentTasks"></div>
-                    </div>
+                    <div class="card-header"><h5 class="mb-0">Tâches récentes</h5></div>
+                    <div class="card-body"><div id="recentTasks"></div></div>
                 </div>
             </div>
 
@@ -390,50 +126,20 @@
             <div id="projects" class="view-section">
                 <div class="d-flex justify-content-between mb-3">
                     <h2>Gestion des Projets</h2>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#projectModal">
-                        <i class="bi bi-plus-circle"></i> Nouveau projet
-                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#projectModal"><i class="bi bi-plus-circle"></i> Nouveau projet</button>
                 </div>
-                <div class="card">
-                    <div class="table-responsive">
-                        <table class="table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Description</th>
-                                    <th>Dates</th>
-                                    <th>Responsable</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="projectsTable"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="card"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Nom</th><th>Description</th><th>Dates</th><th>Responsable</th><th>Actions</th></tr></thead><tbody id="projectsTable"></tbody></table></div></div>
             </div>
 
             <!-- Tasks -->
             <div id="tasks" class="view-section">
                 <div class="d-flex justify-content-between mb-3">
                     <h2>Gestion des Tâches</h2>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal">
-                        <i class="bi bi-plus-circle"></i> Nouvelle tâche
-                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal"><i class="bi bi-plus-circle"></i> Nouvelle tâche</button>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <select class="form-select" id="projectFilter">
-                            <option value="">Tous les projets</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <select class="form-select" id="statusFilter">
-                            <option value="">Tous les statuts</option>
-                            <option value="À faire">À faire</option>
-                            <option value="En cours">En cours</option>
-                            <option value="Terminé">Terminé</option>
-                        </select>
-                    </div>
+                    <div class="col-md-4"><select class="form-select" id="projectFilter"><option value="">Tous les projets</option></select></div>
+                    <div class="col-md-4"><select class="form-select" id="statusFilter"><option value="">Tous les statuts</option><option value="À faire">À faire</option><option value="En cours">En cours</option><option value="Terminé">Terminé</option></select></div>
                 </div>
                 <div id="tasksList"></div>
             </div>
@@ -442,26 +148,9 @@
             <div id="members" class="view-section">
                 <div class="d-flex justify-content-between mb-3">
                     <h2>Gestion des Membres</h2>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#memberModal">
-                        <i class="bi bi-plus-circle"></i> Nouveau membre
-                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#memberModal"><i class="bi bi-plus-circle"></i> Nouveau membre</button>
                 </div>
-                <div class="card">
-                    <div class="table-responsive">
-                        <table class="table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Email</th>
-                                    <th>Rôle</th>
-                                    <th>Projets</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="membersTable"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="card"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Projets</th><th>Actions</th></tr></thead><tbody id="membersTable"></tbody></table></div></div>
             </div>
 
             <!-- Admin -->
@@ -469,23 +158,15 @@
                 <h2>Administration</h2>
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                Gestion des utilisateurs
-                            </div>
+                        <div class="card"><div class="card-header">Gestion des utilisateurs</div>
                             <div class="card-body">
-                                <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#userModal">
-                                    <i class="bi bi-person-plus"></i> Ajouter un utilisateur
-                                </button>
+                                <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#userModal"><i class="bi bi-person-plus"></i> Ajouter un utilisateur</button>
                                 <div id="usersList"></div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                Informations système
-                            </div>
+                        <div class="card"><div class="card-header">Informations système</div>
                             <div class="card-body">
                                 <p><strong>Utilisateurs:</strong> <span id="usersCount">0</span></p>
                                 <p><strong>Membres:</strong> <span id="membersCount">0</span></p>
@@ -496,837 +177,583 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals (identiques à l'original) -->
     <!-- Project Modal -->
-    <div class="modal fade" id="projectModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Nouveau projet</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal fade" id="projectModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Nouveau projet</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form id="projectForm">
+                <div class="mb-3"><label class="form-label">Nom du projet <span class="text-danger">*</span></label><input type="text" class="form-control" id="projectName" required></div>
+                <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" id="projectDesc" rows="3"></textarea></div>
+                <div class="mb-3"><label class="form-label">Date de début <span class="text-danger">*</span></label><input type="date" class="form-control" id="projectStart" required></div>
+                <div class="mb-3"><label class="form-label">Date de fin <span class="text-danger">*</span></label><input type="date" class="form-control" id="projectEnd" required></div>
+                <div class="mb-3"><label class="form-label">Responsable du projet <span class="text-danger">*</span></label>
+                    <select class="form-select" id="projectManager" required><option value="">Sélectionner un membre</option></select>
                 </div>
-                <div class="modal-body">
-                    <form id="projectForm">
-                        <div class="mb-3">
-                            <label class="form-label">Nom du projet <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="projectName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" id="projectDesc" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Date de début <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="projectStart" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Date de fin <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="projectEnd" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Responsable du projet <span class="text-danger">*</span></label>
-                            <select class="form-select" id="projectManager" required>
-                                <option value="">Sélectionner un membre</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-primary" onclick="saveProject()">Enregistrer</button>
-                </div>
-            </div>
+            </form>
         </div>
-    </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="button" class="btn btn-primary" id="saveProjectBtn">Enregistrer</button></div>
+    </div></div></div>
 
     <!-- Task Modal -->
-    <div class="modal fade" id="taskModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Nouvelle tâche</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal fade" id="taskModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Nouvelle tâche</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form id="taskForm">
+                <div class="mb-3"><label class="form-label">Nom de la tâche <span class="text-danger">*</span></label><input type="text" class="form-control" id="taskName" required></div>
+                <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" id="taskDescription" rows="3" placeholder="Décrivez la tâche en détail..."></textarea></div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label">Projet <span class="text-danger">*</span></label><select class="form-select" id="taskProject" required><option value="">Sélectionner un projet</option></select></div>
+                    <div class="col-md-6 mb-3"><label class="form-label">Assigné à <span class="text-danger">*</span></label><select class="form-select" id="taskAssignee" required><option value="">Sélectionner un membre</option></select></div>
                 </div>
-                <div class="modal-body">
-                    <form id="taskForm">
-                        <div class="mb-3">
-                            <label class="form-label">Nom de la tâche <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="taskName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" id="taskDescription" rows="3" placeholder="Décrivez la tâche en détail..."></textarea>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Projet <span class="text-danger">*</span></label>
-                                <select class="form-select" id="taskProject" required>
-                                    <option value="">Sélectionner un projet</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Assigné à <span class="text-danger">*</span></label>
-                                <select class="form-select" id="taskAssignee" required>
-                                    <option value="">Sélectionner un membre</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Date de début <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="taskStart" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Date de fin <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="taskEnd" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Statut</label>
-                                <select class="form-select" id="taskStatus">
-                                    <option value="À faire">À faire</option>
-                                    <option value="En cours">En cours</option>
-                                    <option value="Terminé">Terminé</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Priorité</label>
-                                <select class="form-select" id="taskPriority">
-                                    <option value="Basse">Basse</option>
-                                    <option value="Moyenne" selected>Moyenne</option>
-                                    <option value="Haute">Haute</option>
-                                </select>
-                            </div>
-                        </div>
-                    </form>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label">Date de début <span class="text-danger">*</span></label><input type="date" class="form-control" id="taskStart" required></div>
+                    <div class="col-md-6 mb-3"><label class="form-label">Date de fin <span class="text-danger">*</span></label><input type="date" class="form-control" id="taskEnd" required></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-primary" onclick="saveTask()">Enregistrer</button>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label">Statut</label><select class="form-select" id="taskStatus"><option value="À faire">À faire</option><option value="En cours">En cours</option><option value="Terminé">Terminé</option></select></div>
+                    <div class="col-md-6 mb-3"><label class="form-label">Priorité</label><select class="form-select" id="taskPriority"><option value="Basse">Basse</option><option value="Moyenne" selected>Moyenne</option><option value="Haute">Haute</option></select></div>
                 </div>
-            </div>
+            </form>
         </div>
-    </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="button" class="btn btn-primary" id="saveTaskBtn">Enregistrer</button></div>
+    </div></div></div>
 
     <!-- Member Modal -->
-    <div class="modal fade" id="memberModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Nouveau membre</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="memberForm">
-                        <div class="mb-3">
-                            <label class="form-label">Nom <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="memberName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" id="memberEmail" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Rôle <span class="text-danger">*</span></label>
-                            <select class="form-select" id="memberRole" required>
-                                <option value="">Sélectionner un rôle</option>
-                                <option value="Développeur">Développeur</option>
-                                <option value="Designer">Designer</option>
-                                <option value="Manager">Manager</option>
-                                <option value="QA">QA</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-primary" onclick="saveMember()">Enregistrer</button>
-                </div>
-            </div>
+    <div class="modal fade" id="memberModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Nouveau membre</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form id="memberForm">
+                <div class="mb-3"><label class="form-label">Nom <span class="text-danger">*</span></label><input type="text" class="form-control" id="memberName" required></div>
+                <div class="mb-3"><label class="form-label">Email <span class="text-danger">*</span></label><input type="email" class="form-control" id="memberEmail" required></div>
+                <div class="mb-3"><label class="form-label">Rôle <span class="text-danger">*</span></label><select class="form-select" id="memberRole" required><option value="">Sélectionner un rôle</option><option value="Développeur">Développeur</option><option value="Designer">Designer</option><option value="Manager">Manager</option><option value="QA">QA</option></select></div>
+            </form>
         </div>
-    </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="button" class="btn btn-primary" id="saveMemberBtn">Enregistrer</button></div>
+    </div></div></div>
 
-    <!-- User Modal (Admin) -->
-    <div class="modal fade" id="userModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Ajouter un utilisateur système</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="userForm">
-                        <div class="mb-3">
-                            <label class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" id="userName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Code d'accès <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="userCode" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Rôle <span class="text-danger">*</span></label>
-                            <select class="form-select" id="userRole" required>
-                                <option value="Utilisateur">Utilisateur</option>
-                                <option value="Responsable Projet">Responsable Projet</option>
-                                <option value="Administrateur">Administrateur</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn btn-primary" onclick="saveUser()">Enregistrer</button>
-                </div>
-            </div>
+    <!-- User Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Ajouter un utilisateur système</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form id="userForm">
+                <div class="mb-3"><label class="form-label">Email <span class="text-danger">*</span></label><input type="email" class="form-control" id="userName" required></div>
+                <div class="mb-3"><label class="form-label">Code d'accès <span class="text-danger">*</span></label><input type="text" class="form-control" id="userCode" required></div>
+                <div class="mb-3"><label class="form-label">Rôle <span class="text-danger">*</span></label><select class="form-select" id="userRole" required><option value="Utilisateur">Utilisateur</option><option value="Responsable Projet">Responsable Projet</option><option value="Administrateur">Administrateur</option></select></div>
+            </form>
         </div>
-    </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="button" class="btn btn-primary" id="saveUserBtn">Enregistrer</button></div>
+    </div></div></div>
 
     <script>
-        // Configuration API
-        const API_URL = 'https://script.google.com/macros/s/AKfycbxndzuUO21yY2Otpv-32NYYDEJvU5ivbPLO2u5YXUsRLi5MIwrFJlX2upg-n_RlBvp5/exec?action=';
-        const SPREADSHEET_ID = '1SYZgSXW-UzjQGC-YEdKgkV2xI7WoOFow4vHm4TjJQSw';
+    /*****************************************
+     * Configuration API
+     *****************************************/
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxndzuUO21yY2Otpv-32NYYDEJvU5ivbPLO2u5YXUsRLi5MIwrFJlX2upg-n_RlBvp5/exec?action=';
+    const SPREADSHEET_ID = '1SYZgSXW-UzjQGC-YEdKgkV2xI7WoOFow4vHm4TjJQSw';
 
-        // État de l'application
-        let currentUser = null;
-        let allProjects = [];
-        let allTasks = [];
-        let allMembers = [];
-        let allUsers = [];
-        let accessibleProjects = [];
+    // État
+    let currentUser = null;
+    let allProjects = [];
+    let allTasks = [];
+    let allMembers = [];
+    let allUsers = [];
+    let accessibleProjects = [];
 
-        // Gestion Login
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const code = document.getElementById('code').value;
+    /*****************************************
+     * Utilitaires
+     *****************************************/
+    function showLoading(show) {
+        document.getElementById('loading').classList.toggle('active', !!show);
+    }
 
-            try {
-                showLoading(true);
-                const response = await fetch(`${API_URL}authenticate&email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    currentUser = data.user;
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    showApp();
-                    await loadAllData();
-                } else {
-                    Swal.fire('Erreur', 'Email ou code incorrect', 'error');
-                }
-            } catch (error) {
-                Swal.fire('Erreur', 'Impossible de se connecter: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
+    function safeParseResponse(res) {
+        // renvoie un objet utilisable dans la plupart des cas :
+        // - si le serveur renvoie { data: [...] } -> retourne data
+        // - si le serveur renvoie directement [...] -> retourne [...]
+        // - si le serveur renvoie { success: true, user: {...} } -> retourne cet objet
+        return res.json().then(payload => {
+            if (payload && typeof payload === 'object' && 'data' in payload) return payload.data;
+            return payload;
         });
+    }
 
-        function showApp() {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
-            updateUserInfo();
-            setupNavigation();
-            checkAdminAccess();
-        }
+    /*****************************************
+     * Login
+     *****************************************/
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const code = document.getElementById('code').value.trim();
 
-        function updateUserInfo() {
-            document.getElementById('userName').textContent = currentUser.email.split('@')[0];
-            document.getElementById('userRole').textContent = currentUser.role;
-        }
-
-        function checkAdminAccess() {
-            const adminLink = document.querySelector('[data-view="admin"]');
-            if (currentUser.role !== 'Administrateur') {
-                adminLink.style.display = 'none';
-            }
-        }
-
-        function setupNavigation() {
-            document.querySelectorAll('[data-view]').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const view = link.getAttribute('data-view');
-                    if (view !== 'dashboard' || currentUser.role === 'Administrateur') {
-                        showView(view);
-                    }
-                });
-            });
-        }
-
-        function showView(viewName) {
-            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-            document.getElementById(viewName).classList.add('active');
-            document.querySelectorAll('[data-view]').forEach(l => l.classList.remove('active'));
-            document.querySelector(`[data-view="${viewName}"]`).classList.add('active');
-
-            const titles = {
-                dashboard: 'Tableau de bord',
-                projects: 'Gestion des Projets',
-                tasks: 'Gestion des Tâches',
-                members: 'Gestion des Membres',
-                admin: 'Administration'
-            };
-            document.getElementById('viewTitle').textContent = titles[viewName] || 'Vue';
-
-            if (viewName === 'dashboard') loadDashboard();
-            else if (viewName === 'projects') loadProjects();
-            else if (viewName === 'tasks') loadTasks();
-            else if (viewName === 'members') loadMembers();
-            else if (viewName === 'admin') loadAdmin();
-        }
-
-        async function loadAllData() {
+        try {
             showLoading(true);
-            try {
-                const projectsResponse = await fetch(`${API_URL}getProjects`);
-                allProjects = await projectsResponse.json();
+            const response = await fetch(`${API_URL}authenticate&email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`);
+            const payload = await response.json().catch(()=>null);
 
-                const tasksResponse = await fetch(`${API_URL}getTasks`);
-                allTasks = await tasksResponse.json();
+            // On supporte plusieurs formats de réponse côté serveur
+            // 1) { success: true, user: { email, role } }
+            // 2) { data: { success: true, user: {...} } }
+            // 3) directement { email: "...", role: "..." }  (fallback)
+            let auth = payload;
+            if (payload && payload.data) auth = payload.data;
 
-                const membersResponse = await fetch(`${API_URL}getMembers`);
-                allMembers = await membersResponse.json();
-
-                determineAccessibleProjects();
-                await loadDashboard();
-            } catch (error) {
-                Swal.fire('Erreur', 'Erreur lors du chargement des données: ' + error.message, 'error');
-                console.error(error);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function determineAccessibleProjects() {
-            if (currentUser.role === 'Administrateur') {
-                accessibleProjects = [...allProjects];
-            } else if (currentUser.role === 'Responsable Projet') {
-                accessibleProjects = allProjects.filter(p => p.manager === currentUser.email);
-            } else {
-                const projectIds = new Set(
-                    allTasks
-                        .filter(t => t.assignee === currentUser.email)
-                        .map(t => t.projectId)
-                );
-                accessibleProjects = allProjects.filter(p => projectIds.has(p.id));
-            }
-        }
-
-        function getAccessibleTasks() {
-            const projectIds = new Set(accessibleProjects.map(p => p.id));
-            
-            if (currentUser.role === 'Administrateur') {
-                return allTasks;
-            } else if (currentUser.role === 'Responsable Projet') {
-                return allTasks.filter(t => projectIds.has(t.projectId));
-            } else {
-                return allTasks.filter(t => t.assignee === currentUser.email);
-            }
-        }
-
-        async function loadDashboard() {
-            const accessibleTasks = getAccessibleTasks();
-            
-            document.getElementById('projectCount').textContent = accessibleProjects.length;
-            document.getElementById('taskCount').textContent = accessibleTasks.filter(t => t.assignee === currentUser.email).length;
-            document.getElementById('completedCount').textContent = accessibleTasks.filter(t => t.status === 'Terminé' && t.assignee === currentUser.email).length;
-            
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('lateCount').textContent = accessibleTasks.filter(t => 
-                t.endDate < today && t.status !== 'Terminé' && t.assignee === currentUser.email
-            ).length;
-
-            const recentTasksContainer = document.getElementById('recentTasks');
-            recentTasksContainer.innerHTML = '';
-
-            const recentTasks = accessibleTasks
-                .filter(t => t.assignee === currentUser.email)
-                .sort((a, b) => new Date(b.endDate) - new Date(a.endDate))
-                .slice(0, 5);
-
-            if (recentTasks.length === 0) {
-                recentTasksContainer.innerHTML = '<p class="text-muted">Aucune tâche assignée</p>';
-                return;
-            }
-
-            recentTasks.forEach(task => {
-                const project = allProjects.find(p => p.id == task.projectId);
-                const priorityColor = task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745';
-                
-                const taskCard = document.createElement('div');
-                taskCard.className = 'task-card';
-                taskCard.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div style="flex: 1;">
-                            <h6 style="margin: 0 0 5px 0;">${task.name}</h6>
-                            <small class="text-muted">${project ? project.name : 'Projet'}</small>
-                            <br>
-                            ${task.description ? `<small>${task.description.substring(0, 60)}${task.description.length > 60 ? '...' : ''}</small><br>` : ''}
-                            <small>Dates: ${task.startDate} au ${task.endDate}</small>
-                        </div>
-                        <span class="badge badge-priority" style="background: ${priorityColor};">${task.priority}</span>
-                        <span class="badge" style="background: ${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'}; margin-left: 5px;">${task.status}</span>
-                    </div>
-                `;
-                recentTasksContainer.appendChild(taskCard);
-            });
-        }
-
-        async function loadProjects() {
-            const projectsTable = document.getElementById('projectsTable');
-            projectsTable.innerHTML = '';
-
-            accessibleProjects.forEach(project => {
-                const row = document.createElement('tr');
-                const manager = allMembers.find(m => m.email === project.manager);
-                
-                row.innerHTML = `
-                    <td><strong>${project.name}</strong></td>
-                    <td>${project.description || '-'}</td>
-                    <td>${project.startDate} à ${project.endDate}</td>
-                    <td>${manager ? manager.name : project.manager}</td>
-                    <td>
-                        ${currentUser.role === 'Administrateur' || currentUser.role === 'Responsable Projet' ? `
-                            <button class="btn btn-sm btn-warning" onclick="editProject('${project.id}')">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        ` : `
-                            <button class="btn btn-sm btn-info">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        `}
-                    </td>
-                `;
-                projectsTable.appendChild(row);
-            });
-
-            const projectManager = document.getElementById('projectManager');
-            projectManager.innerHTML = '<option value="">Sélectionner un membre</option>';
-            allMembers.forEach(member => {
-                const option = document.createElement('option');
-                option.value = member.email;
-                option.textContent = member.name;
-                projectManager.appendChild(option);
-            });
-        }
-
-        async function loadTasks() {
-            const accessibleTasks = getAccessibleTasks();
-            const tasksList = document.getElementById('tasksList');
-            const projectFilter = document.getElementById('projectFilter');
-            const statusFilter = document.getElementById('statusFilter');
-
-            projectFilter.innerHTML = '<option value="">Tous les projets</option>';
-            accessibleProjects.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p.id;
-                option.textContent = p.name;
-                projectFilter.appendChild(option);
-            });
-
-            const filterTasks = () => {
-                const projectId = projectFilter.value;
-                const status = statusFilter.value;
-
-                let filtered = accessibleTasks;
-                if (projectId) filtered = filtered.filter(t => t.projectId == projectId);
-                if (status) filtered = filtered.filter(t => t.status === status);
-
-                tasksList.innerHTML = '';
-                if (filtered.length === 0) {
-                    tasksList.innerHTML = '<p class="text-muted">Aucune tâche trouvée</p>';
-                    return;
-                }
-
-                filtered.forEach(task => {
-                    const project = allProjects.find(p => p.id == task.projectId);
-                    const assignee = allMembers.find(m => m.email === task.assignee);
-                    const priorityColor = task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745';
-                    
-                    const taskCard = document.createElement('div');
-                    taskCard.className = 'task-card';
-                    taskCard.innerHTML = `
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div style="flex: 1;">
-                                <h6 style="margin: 0 0 5px 0;">${task.name}</h6>
-                                <small class="text-muted">${project ? project.name : 'Projet'}</small>
-                                <br>
-                                ${task.description ? `<small><strong>Description:</strong> ${task.description}</small><br>` : ''}
-                                <small>Assigné à: ${assignee ? assignee.name : task.assignee}</small>
-                                <br>
-                                <small>Dates: ${task.startDate} au ${task.endDate}</small>
-                            </div>
-                            <div>
-                                <span class="badge badge-priority" style="background: ${priorityColor}; margin-bottom: 5px;">${task.priority}</span>
-                                <br>
-                                <span class="badge" style="background: ${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'};">${task.status}</span>
-                            </div>
-                        </div>
-                        ${currentUser.role === 'Administrateur' || (currentUser.role === 'Responsable Projet' && accessibleProjects.find(p => p.id == task.projectId)) ? `
-                            <div class="mt-2">
-                                <button class="btn btn-sm btn-warning" onclick="editTask('${task.id}')">
-                                    <i class="bi bi-pencil"></i> Modifier
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteTask('${task.id}')">
-                                    <i class="bi bi-trash"></i> Supprimer
-                                </button>
-                            </div>
-                        ` : ''}
-                    `;
-                    tasksList.appendChild(taskCard);
-                });
-            };
-
-            projectFilter.addEventListener('change', filterTasks);
-            statusFilter.addEventListener('change', filterTasks);
-            filterTasks();
-
-            const taskProject = document.getElementById('taskProject');
-            const taskAssignee = document.getElementById('taskAssignee');
-
-            taskProject.innerHTML = '<option value="">Sélectionner un projet</option>';
-            accessibleProjects.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p.id;
-                option.textContent = p.name;
-                taskProject.appendChild(option);
-            });
-
-            taskAssignee.innerHTML = '<option value="">Sélectionner un membre</option>';
-            allMembers.forEach(m => {
-                const option = document.createElement('option');
-                option.value = m.email;
-                option.textContent = m.name;
-                taskAssignee.appendChild(option);
-            });
-        }
-
-        async function loadMembers() {
-            const membersTable = document.getElementById('membersTable');
-            membersTable.innerHTML = '';
-
-            let displayMembers = allMembers;
-            if (currentUser.role === 'Responsable Projet') {
-                const projectIds = new Set(accessibleProjects.map(p => p.id));
-                const memberEmails = new Set(
-                    allTasks
-                        .filter(t => projectIds.has(t.projectId))
-                        .map(t => t.assignee)
-                );
-                displayMembers = allMembers.filter(m => memberEmails.has(m.email));
-            }
-
-            displayMembers.forEach(member => {
-                const memberTasks = allTasks.filter(t => t.assignee === member.email);
-                const row = document.createElement('tr');
-                
-                row.innerHTML = `
-                    <td>${member.name}</td>
-                    <td>${member.email}</td>
-                    <td>${member.role}</td>
-                    <td>${memberTasks.length}</td>
-                    <td>
-                        ${currentUser.role === 'Administrateur' ? `
-                            <button class="btn btn-sm btn-warning" onclick="editMember('${member.id}')">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteMember('${member.id}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        ` : ''}
-                    </td>
-                `;
-                membersTable.appendChild(row);
-            });
-        }
-
-        async function loadAdmin() {
-            if (currentUser.role !== 'Administrateur') {
-                Swal.fire('Accès refusé', 'Vous n\'avez pas accès à cette section', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_URL}getUsers`);
-                allUsers = await response.json();
-
-                const usersList = document.getElementById('usersList');
-                usersList.innerHTML = '';
-
-                allUsers.forEach(user => {
-                    const div = document.createElement('div');
-                    div.className = 'card mb-2';
-                    div.innerHTML = `
-                        <div class="card-body d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>${user.email}</strong><br>
-                                <small class="text-muted">${user.role}</small>
-                            </div>
-                            <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.email}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    `;
-                    usersList.appendChild(div);
-                });
-
-                document.getElementById('usersCount').textContent = allUsers.length;
-                document.getElementById('membersCount').textContent = allMembers.length;
-                document.getElementById('projectsCount').textContent = allProjects.length;
-                document.getElementById('tasksCount').textContent = allTasks.length;
-            } catch (error) {
-                console.error('Erreur chargement utilisateurs:', error);
-            }
-        }
-
-        async function saveProject() {
-            const name = document.getElementById('projectName').value;
-            const desc = document.getElementById('projectDesc').value;
-            const start = document.getElementById('projectStart').value;
-            const end = document.getElementById('projectEnd').value;
-            const manager = document.getElementById('projectManager').value;
-
-            if (!name || !start || !end || !manager) {
-                Swal.fire('Erreur', 'Remplissez tous les champs obligatoires', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(API_URL + 'addProject', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name, desc, start, end, manager
-                    })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    Swal.fire('Succès', 'Projet créé', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
-                    document.getElementById('projectForm').reset();
-                    await loadAllData();
-                    loadProjects();
-                }
-            } catch (error) {
-                Swal.fire('Erreur', 'Erreur: ' + error.message, 'error');
-            }
-        }
-
-        async function saveTask() {
-            const name = document.getElementById('taskName').value;
-            const description = document.getElementById('taskDescription').value;
-            const projectId = document.getElementById('taskProject').value;
-            const assignee = document.getElementById('taskAssignee').value;
-            const status = document.getElementById('taskStatus').value;
-            const priority = document.getElementById('taskPriority').value;
-            const startDate = document.getElementById('taskStart').value;
-            const endDate = document.getElementById('taskEnd').value;
-
-            if (!name || !projectId || !assignee || !startDate || !endDate) {
-                Swal.fire('Erreur', 'Remplissez tous les champs obligatoires', 'error');
-                return;
-            }
-
-            if (new Date(startDate) > new Date(endDate)) {
-                Swal.fire('Erreur', 'La date de début doit être avant la date de fin', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(API_URL + 'addTask', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name, description, projectId, assignee, status, priority, startDate, endDate
-                    })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    Swal.fire('Succès', 'Tâche créée', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
-                    document.getElementById('taskForm').reset();
-                    await loadAllData();
-                    loadTasks();
-                }
-            } catch (error) {
-                Swal.fire('Erreur', 'Erreur: ' + error.message, 'error');
-            }
-        }
-
-        async function saveMember() {
-            const name = document.getElementById('memberName').value;
-            const email = document.getElementById('memberEmail').value;
-            const role = document.getElementById('memberRole').value;
-
-            if (!name || !email || !role) {
-                Swal.fire('Erreur', 'Remplissez tous les champs', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(API_URL + 'addMember', {
-                    method: 'POST',
-                    body: JSON.stringify({ name, email, role })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    Swal.fire('Succès', 'Membre créé', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
-                    document.getElementById('memberForm').reset();
-                    await loadAllData();
-                    loadMembers();
-                }
-            } catch (error) {
-                Swal.fire('Erreur', 'Erreur: ' + error.message, 'error');
-            }
-        }
-
-        async function saveUser() {
-            const email = document.getElementById('userName').value;
-            const code = document.getElementById('userCode').value;
-            const role = document.getElementById('userRole').value;
-
-            if (!email || !code) {
-                Swal.fire('Erreur', 'Remplissez tous les champs', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(API_URL + 'addUser', {
-                    method: 'POST',
-                    body: JSON.stringify({ email, code, role })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    Swal.fire('Succès', 'Utilisateur créé', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-                    document.getElementById('userForm').reset();
-                    await loadAdmin();
-                }
-            } catch (error) {
-                Swal.fire('Erreur', 'Erreur: ' + error.message, 'error');
-            }
-        }
-
-        async function deleteProject(projectId) {
-            const confirmed = await Swal.fire({
-                title: 'Confirmer',
-                text: 'Êtes-vous sûr?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Oui'
-            });
-
-            if (confirmed.isConfirmed) {
-                try {
-                    await fetch(`${API_URL}deleteProject&id=${projectId}`);
-                    await loadAllData();
-                    loadProjects();
-                } catch (error) {
-                    Swal.fire('Erreur', error.message, 'error');
-                }
-            }
-        }
-
-        async function deleteTask(taskId) {
-            const confirmed = await Swal.fire({
-                title: 'Confirmer',
-                text: 'Êtes-vous sûr?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Oui'
-            });
-
-            if (confirmed.isConfirmed) {
-                try {
-                    await fetch(`${API_URL}deleteTask&id=${taskId}`);
-                    await loadAllData();
-                    loadTasks();
-                } catch (error) {
-                    Swal.fire('Erreur', error.message, 'error');
-                }
-            }
-        }
-
-        async function deleteMember(memberId) {
-            const confirmed = await Swal.fire({
-                title: 'Confirmer',
-                text: 'Êtes-vous sûr?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Oui'
-            });
-
-            if (confirmed.isConfirmed) {
-                try {
-                    await fetch(`${API_URL}deleteMember&id=${memberId}`);
-                    await loadAllData();
-                    loadMembers();
-                } catch (error) {
-                    Swal.fire('Erreur', error.message, 'error');
-                }
-            }
-        }
-
-        async function deleteUser(email) {
-            const confirmed = await Swal.fire({
-                title: 'Confirmer',
-                text: 'Êtes-vous sûr?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Oui'
-            });
-
-            if (confirmed.isConfirmed) {
-                try {
-                    await fetch(`${API_URL}deleteUser&email=${encodeURIComponent(email)}`);
-                    await loadAdmin();
-                } catch (error) {
-                    Swal.fire('Erreur', error.message, 'error');
-                }
-            }
-        }
-
-        function editProject(projectId) {
-            alert('Modification en cours de développement');
-        }
-
-        function editTask(taskId) {
-            alert('Modification en cours de développement');
-        }
-
-        function editMember(memberId) {
-            alert('Modification en cours de développement');
-        }
-
-        function showLoading(show) {
-            document.getElementById('loading').classList.toggle('active', show);
-        }
-
-        function logout() {
-            localStorage.removeItem('currentUser');
-            currentUser = null;
-            location.reload();
-        }
-
-        // Initialisation
-        window.addEventListener('load', () => {
-            const saved = localStorage.getItem('currentUser');
-            if (saved) {
-                currentUser = JSON.parse(saved);
+            if (auth && (auth.success || (auth.user && auth.user.email))) {
+                currentUser = auth.user || auth;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 showApp();
-                loadAllData();
+                await loadAllData();
+            } else if (auth && auth.email) {
+                // format minimal: { email: "...", role: "..." }
+                currentUser = { email: auth.email, role: auth.role || 'Utilisateur' };
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showApp();
+                await loadAllData();
+            } else {
+                Swal.fire('Erreur', 'Email ou code incorrect', 'error');
             }
+        } catch (error) {
+            console.error('Login error', error);
+            Swal.fire('Erreur', 'Impossible de se connecter: ' + (error.message || error), 'error');
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    /*****************************************
+     * Affichage & Navigation
+     *****************************************/
+    function showApp() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        updateUserInfo();
+        setupNavigation();
+        checkAdminAccess();
+    }
+
+    function updateUserInfo() {
+        if (!currentUser) return;
+        document.getElementById('userName').textContent = (currentUser.email || '').split('@')[0] || 'Utilisateur';
+        document.getElementById('userRole').textContent = currentUser.role || 'Utilisateur';
+    }
+
+    function checkAdminAccess() {
+        const adminLink = document.querySelector('[data-view="admin"]');
+        if (!adminLink) return;
+        if (!currentUser || currentUser.role !== 'Administrateur') adminLink.style.display = 'none';
+        else adminLink.style.display = '';
+    }
+
+    function setupNavigation() {
+        document.querySelectorAll('[data-view]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const view = link.getAttribute('data-view');
+                if (view !== 'dashboard' || (currentUser && currentUser.role === 'Administrateur')) {
+                    showView(view);
+                } else {
+                    showView(view);
+                }
+            });
         });
+    }
+
+    function showView(viewName) {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        const target = document.getElementById(viewName);
+        if (target) target.classList.add('active');
+
+        document.querySelectorAll('[data-view]').forEach(l => l.classList.remove('active'));
+        const nav = document.querySelector(`[data-view="${viewName}"]`);
+        if (nav) nav.classList.add('active');
+
+        const titles = { dashboard: 'Tableau de bord', projects: 'Gestion des Projets', tasks: 'Gestion des Tâches', members: 'Gestion des Membres', admin: 'Administration' };
+        document.getElementById('viewTitle').textContent = titles[viewName] || 'Vue';
+
+        // charger la vue quand nécessaire
+        if (viewName === 'dashboard') loadDashboard();
+        else if (viewName === 'projects') loadProjects();
+        else if (viewName === 'tasks') loadTasks();
+        else if (viewName === 'members') loadMembers();
+        else if (viewName === 'admin') loadAdmin();
+    }
+
+    /*****************************************
+     * Chargement des données
+     *****************************************/
+    async function loadAllData() {
+        showLoading(true);
+        try {
+            const [projectsRes, tasksRes, membersRes] = await Promise.all([
+                fetch(`${API_URL}getProjects`),
+                fetch(`${API_URL}getTasks`),
+                fetch(`${API_URL}getMembers`)
+            ]);
+
+            const projects = await safeParseResponse(projectsRes).catch(()=>[]);
+            const tasks = await safeParseResponse(tasksRes).catch(()=>[]);
+            const members = await safeParseResponse(membersRes).catch(()=>[]);
+
+            allProjects = Array.isArray(projects) ? projects : (projects || []);
+            allTasks = Array.isArray(tasks) ? tasks : (tasks || []);
+            allMembers = Array.isArray(members) ? members : (members || []);
+
+            determineAccessibleProjects();
+            await loadDashboard();
+        } catch (error) {
+            console.error('loadAllData error', error);
+            Swal.fire('Erreur', 'Erreur lors du chargement des données: ' + (error.message || error), 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function determineAccessibleProjects() {
+        if (!currentUser) { accessibleProjects = []; return; }
+        if (currentUser.role === 'Administrateur') accessibleProjects = [...allProjects];
+        else if (currentUser.role === 'Responsable Projet') accessibleProjects = allProjects.filter(p => p.manager === currentUser.email || p.managerEmail === currentUser.email);
+        else {
+            const projectIds = new Set(allTasks.filter(t => t.assignee === currentUser.email).map(t => t.projectId));
+            accessibleProjects = allProjects.filter(p => projectIds.has(p.id));
+        }
+    }
+
+    function getAccessibleTasks() {
+        const projectIds = new Set(accessibleProjects.map(p => p.id));
+        if (!currentUser) return [];
+        if (currentUser.role === 'Administrateur') return allTasks;
+        if (currentUser.role === 'Responsable Projet') return allTasks.filter(t => projectIds.has(t.projectId));
+        return allTasks.filter(t => t.assignee === currentUser.email);
+    }
+
+    /*****************************************
+     * Vues (Dashboard / Projects / Tasks / Members / Admin)
+     *****************************************/
+    async function loadDashboard() {
+        const accessibleTasks = getAccessibleTasks();
+
+        document.getElementById('projectCount').textContent = accessibleProjects.length;
+        document.getElementById('taskCount').textContent = accessibleTasks.filter(t => t.assignee === currentUser.email).length;
+        document.getElementById('completedCount').textContent = accessibleTasks.filter(t => t.status === 'Terminé' && t.assignee === currentUser.email).length;
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('lateCount').textContent = accessibleTasks.filter(t => t.endDate && t.endDate < today && t.status !== 'Terminé' && t.assignee === currentUser.email).length;
+
+        const recentTasksContainer = document.getElementById('recentTasks');
+        recentTasksContainer.innerHTML = '';
+
+        const recentTasks = accessibleTasks.filter(t => t.assignee === currentUser.email).sort((a,b)=> new Date(b.endDate) - new Date(a.endDate)).slice(0,5);
+        if (!recentTasks || recentTasks.length === 0) {
+            recentTasksContainer.innerHTML = '<p class="text-muted">Aucune tâche assignée</p>';
+            return;
+        }
+
+        recentTasks.forEach(task => {
+            const project = allProjects.find(p => p.id == task.projectId);
+            const priorityColor = task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745';
+            const div = document.createElement('div');
+            div.className = 'task-card';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div style="flex:1;">
+                        <h6 style="margin:0 0 5px 0;">${task.name}</h6>
+                        <small class="text-muted">${project ? project.name : 'Projet'}</small><br>
+                        ${task.description ? `<small>${(task.description+'').substring(0,90)}${(task.description+'').length>90?'...':''}</small><br>` : ''}
+                        <small>Dates: ${task.startDate || '-'} au ${task.endDate || '-'}</small>
+                    </div>
+                    <div style="margin-left:10px;text-align:right">
+                        <span class="badge badge-priority" style="background:${priorityColor};">${task.priority}</span><br>
+                        <span class="badge" style="background:${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'}; margin-left:5px;">${task.status}</span>
+                    </div>
+                </div>
+            `;
+            recentTasksContainer.appendChild(div);
+        });
+    }
+
+    async function loadProjects() {
+        const projectsTable = document.getElementById('projectsTable');
+        projectsTable.innerHTML = '';
+
+        accessibleProjects.forEach(project => {
+            const manager = allMembers.find(m => m.email === project.manager || m.email === project.managerEmail);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${project.name}</strong></td>
+                <td>${project.description || '-'}</td>
+                <td>${project.startDate || '-'} à ${project.endDate || '-'}</td>
+                <td>${manager ? manager.name : (project.manager || '-')}</td>
+                <td>
+                    ${currentUser && (currentUser.role === 'Administrateur' || currentUser.role === 'Responsable Projet') ? `
+                        <button class="btn btn-sm btn-warning" onclick="editProject('${project.id}')"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}')"><i class="bi bi-trash"></i></button>
+                    ` : `<button class="btn btn-sm btn-info"><i class="bi bi-eye"></i></button>`}
+                </td>
+            `;
+            projectsTable.appendChild(row);
+        });
+
+        // Remplir select responsable
+        const projectManager = document.getElementById('projectManager');
+        if (projectManager) {
+            projectManager.innerHTML = '<option value="">Sélectionner un membre</option>';
+            allMembers.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.email;
+                opt.textContent = m.name;
+                projectManager.appendChild(opt);
+            });
+        }
+    }
+
+    async function loadTasks() {
+        const accessibleTasks = getAccessibleTasks();
+        const tasksList = document.getElementById('tasksList');
+        const projectFilter = document.getElementById('projectFilter');
+        const statusFilter = document.getElementById('statusFilter');
+
+        projectFilter.innerHTML = '<option value="">Tous les projets</option>';
+        accessibleProjects.forEach(p => {
+            const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; projectFilter.appendChild(opt);
+        });
+
+        const renderFiltered = () => {
+            const projectId = projectFilter.value;
+            const status = statusFilter.value;
+            let filtered = accessibleTasks.slice();
+            if (projectId) filtered = filtered.filter(t => t.projectId == projectId);
+            if (status) filtered = filtered.filter(t => t.status === status);
+
+            tasksList.innerHTML = '';
+            if (!filtered.length) { tasksList.innerHTML = '<p class="text-muted">Aucune tâche trouvée</p>'; return; }
+
+            filtered.forEach(task => {
+                const project = allProjects.find(p => p.id == task.projectId);
+                const assignee = allMembers.find(m => m.email === task.assignee);
+                const priorityColor = task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745';
+                const card = document.createElement('div'); card.className = 'task-card';
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div style="flex:1;">
+                            <h6 style="margin:0 0 5px 0;">${task.name}</h6>
+                            <small class="text-muted">${project ? project.name : 'Projet'}</small><br>
+                            ${task.description ? `<small><strong>Description:</strong> ${task.description}</small><br>` : ''}
+                            <small>Assigné à: ${assignee ? assignee.name : (task.assignee || '-')}</small><br>
+                            <small>Dates: ${task.startDate || '-'} au ${task.endDate || '-'}</small>
+                        </div>
+                        <div style="text-align:right">
+                            <span class="badge badge-priority" style="background:${priorityColor}; margin-bottom:5px;">${task.priority}</span><br>
+                            <span class="badge" style="background:${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'};">${task.status}</span>
+                        </div>
+                    </div>
+                    ${currentUser && (currentUser.role === 'Administrateur' || (currentUser.role === 'Responsable Projet' && accessibleProjects.find(p=>p.id==task.projectId))) ? `
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-warning" onclick="editTask('${task.id}')"><i class="bi bi-pencil"></i> Modifier</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTask('${task.id}')"><i class="bi bi-trash"></i> Supprimer</button>
+                        </div>
+                    ` : ''}
+                `;
+                tasksList.appendChild(card);
+            });
+        };
+
+        projectFilter.addEventListener('change', renderFiltered);
+        statusFilter.addEventListener('change', renderFiltered);
+        renderFiltered();
+
+        // remplir selects de création
+        const taskProject = document.getElementById('taskProject');
+        const taskAssignee = document.getElementById('taskAssignee');
+        if (taskProject) {
+            taskProject.innerHTML = '<option value="">Sélectionner un projet</option>';
+            accessibleProjects.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; taskProject.appendChild(o); });
+        }
+        if (taskAssignee) {
+            taskAssignee.innerHTML = '<option value="">Sélectionner un membre</option>';
+            allMembers.forEach(m => { const o = document.createElement('option'); o.value = m.email; o.textContent = m.name; taskAssignee.appendChild(o); });
+        }
+    }
+
+    async function loadMembers() {
+        const membersTable = document.getElementById('membersTable'); membersTable.innerHTML = '';
+        let displayMembers = allMembers;
+        if (currentUser && currentUser.role === 'Responsable Projet') {
+            const projectIds = new Set(accessibleProjects.map(p=>p.id));
+            const memberEmails = new Set(allTasks.filter(t=>projectIds.has(t.projectId)).map(t=>t.assignee));
+            displayMembers = allMembers.filter(m => memberEmails.has(m.email));
+        }
+        displayMembers.forEach(member => {
+            const memberTasks = allTasks.filter(t => t.assignee === member.email);
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${member.name}</td><td>${member.email}</td><td>${member.role}</td><td>${memberTasks.length}</td><td>${currentUser && currentUser.role==='Administrateur' ? `<button class="btn btn-sm btn-warning" onclick="editMember('${member.id}')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-danger" onclick="deleteMember('${member.id}')"><i class="bi bi-trash"></i></button>` : ''}</td>`;
+            membersTable.appendChild(row);
+        });
+    }
+
+    async function loadAdmin() {
+        if (!currentUser || currentUser.role !== 'Administrateur') { Swal.fire('Accès refusé','Vous n\'avez pas accès à cette section','error'); return; }
+        try {
+            const res = await fetch(`${API_URL}getUsers`);
+            const users = await safeParseResponse(res).catch(()=>[]);
+            allUsers = Array.isArray(users) ? users : (users || []);
+            const usersList = document.getElementById('usersList'); usersList.innerHTML = '';
+            allUsers.forEach(user => {
+                const div = document.createElement('div'); div.className = 'card mb-2';
+                div.innerHTML = `<div class="card-body d-flex justify-content-between align-items-center"><div><strong>${user.email}</strong><br><small class="text-muted">${user.role}</small></div><button class="btn btn-sm btn-danger" onclick="deleteUser('${user.email}')"><i class="bi bi-trash"></i></button></div>`;
+                usersList.appendChild(div);
+            });
+            document.getElementById('usersCount').textContent = allUsers.length;
+            document.getElementById('membersCount').textContent = allMembers.length;
+            document.getElementById('projectsCount').textContent = allProjects.length;
+            document.getElementById('tasksCount').textContent = allTasks.length;
+        } catch (err) {
+            console.error('loadAdmin error', err);
+        }
+    }
+
+    /*****************************************
+     * CRUD: Save / Delete (les fetch sont robustes)
+     *****************************************/
+    document.getElementById('saveProjectBtn').addEventListener('click', saveProject);
+    document.getElementById('saveTaskBtn').addEventListener('click', saveTask);
+    document.getElementById('saveMemberBtn').addEventListener('click', saveMember);
+    document.getElementById('saveUserBtn').addEventListener('click', saveUser);
+
+    async function saveProject() {
+        const name = document.getElementById('projectName').value;
+        const desc = document.getElementById('projectDesc').value;
+        const start = document.getElementById('projectStart').value;
+        const end = document.getElementById('projectEnd').value;
+        const manager = document.getElementById('projectManager').value;
+        if (!name || !start || !end || !manager) { Swal.fire('Erreur','Remplissez tous les champs obligatoires','error'); return; }
+        try {
+            const res = await fetch(`${API_URL}addProject`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name, desc, start, end, manager })
+            });
+            const result = await res.json().catch(()=>null);
+            const ok = result && (result.success || result === true || (result && result.status === 'ok'));
+            if (ok) {
+                Swal.fire('Succès','Projet créé','success');
+                bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
+                document.getElementById('projectForm').reset();
+                await loadAllData();
+                loadProjects();
+            } else {
+                throw new Error((result && result.error) || 'Erreur inconnue');
+            }
+        } catch (e) {
+            console.error('saveProject', e);
+            Swal.fire('Erreur','Erreur: ' + (e.message || e), 'error');
+        }
+    }
+
+    async function saveTask() {
+        const name = document.getElementById('taskName').value;
+        const description = document.getElementById('taskDescription').value;
+        const projectId = document.getElementById('taskProject').value;
+        const assignee = document.getElementById('taskAssignee').value;
+        const status = document.getElementById('taskStatus').value;
+        const priority = document.getElementById('taskPriority').value;
+        const startDate = document.getElementById('taskStart').value;
+        const endDate = document.getElementById('taskEnd').value;
+        if (!name || !projectId || !assignee || !startDate || !endDate) { Swal.fire('Erreur','Remplissez tous les champs obligatoires','error'); return; }
+        if (new Date(startDate) > new Date(endDate)) { Swal.fire('Erreur','La date de début doit être avant la date de fin','error'); return; }
+        try {
+            const res = await fetch(`${API_URL}addTask`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ name, description, projectId, assignee, status, priority, startDate, endDate })
+            });
+            const result = await res.json().catch(()=>null);
+            const ok = result && (result.success || result === true);
+            if (ok) {
+                Swal.fire('Succès','Tâche créée','success');
+                bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+                document.getElementById('taskForm').reset();
+                await loadAllData(); loadTasks();
+            } else throw new Error((result && result.error) || 'Erreur inconnue');
+        } catch (e) {
+            console.error('saveTask', e);
+            Swal.fire('Erreur','Erreur: ' + (e.message || e), 'error');
+        }
+    }
+
+    async function saveMember() {
+        const name = document.getElementById('memberName').value;
+        const email = document.getElementById('memberEmail').value;
+        const role = document.getElementById('memberRole').value;
+        if (!name || !email || !role) { Swal.fire('Erreur','Remplissez tous les champs','error'); return; }
+        try {
+            const res = await fetch(`${API_URL}addMember`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email, role }) });
+            const result = await res.json().catch(()=>null);
+            if (result && (result.success || result === true)) {
+                Swal.fire('Succès','Membre créé','success');
+                bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
+                document.getElementById('memberForm').reset();
+                await loadAllData(); loadMembers();
+            } else throw new Error((result && result.error) || 'Erreur inconnue');
+        } catch (e) { console.error('saveMember', e); Swal.fire('Erreur','Erreur: ' + (e.message || e), 'error'); }
+    }
+
+    async function saveUser() {
+        const email = document.getElementById('userName').value;
+        const code = document.getElementById('userCode').value;
+        const role = document.getElementById('userRole').value;
+        if (!email || !code) { Swal.fire('Erreur','Remplissez tous les champs','error'); return; }
+        try {
+            const res = await fetch(`${API_URL}addUser`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, code, role }) });
+            const result = await res.json().catch(()=>null);
+            if (result && (result.success || result === true)) {
+                Swal.fire('Succès','Utilisateur créé','success');
+                bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+                document.getElementById('userForm').reset();
+                await loadAdmin();
+            } else throw new Error((result && result.error) || 'Erreur inconnue');
+        } catch (e) { console.error('saveUser', e); Swal.fire('Erreur','Erreur: ' + (e.message || e), 'error'); }
+    }
+
+    async function deleteProject(projectId) {
+        const confirmed = await Swal.fire({ title: 'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
+        if (!confirmed.isConfirmed) return;
+        try { await fetch(`${API_URL}deleteProject&id=${projectId}`); await loadAllData(); loadProjects(); } catch(e){ Swal.fire('Erreur', e.message || e, 'error'); }
+    }
+    async function deleteTask(taskId) {
+        const confirmed = await Swal.fire({ title: 'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
+        if (!confirmed.isConfirmed) return;
+        try { await fetch(`${API_URL}deleteTask&id=${taskId}`); await loadAllData(); loadTasks(); } catch(e){ Swal.fire('Erreur', e.message || e, 'error'); }
+    }
+    async function deleteMember(memberId) {
+        const confirmed = await Swal.fire({ title: 'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
+        if (!confirmed.isConfirmed) return;
+        try { await fetch(`${API_URL}deleteMember&id=${memberId}`); await loadAllData(); loadMembers(); } catch(e){ Swal.fire('Erreur', e.message || e, 'error'); }
+    }
+    async function deleteUser(email) {
+        const confirmed = await Swal.fire({ title: 'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
+        if (!confirmed.isConfirmed) return;
+        try { await fetch(`${API_URL}deleteUser&email=${encodeURIComponent(email)}`); await loadAdmin(); } catch(e){ Swal.fire('Erreur', e.message || e, 'error'); }
+    }
+
+    function editProject(projectId){ Swal.fire('Info','Modification en cours de développement','info'); }
+    function editTask(taskId){ Swal.fire('Info','Modification en cours de développement','info'); }
+    function editMember(memberId){ Swal.fire('Info','Modification en cours de développement','info'); }
+
+    function logout() { localStorage.removeItem('currentUser'); currentUser = null; location.reload(); }
+
+    /*****************************************
+     * Initialisation (si user en localStorage)
+     *****************************************/
+    window.addEventListener('load', () => {
+        const saved = localStorage.getItem('currentUser');
+        if (saved) {
+            try { currentUser = JSON.parse(saved); showApp(); loadAllData(); } catch(e){ console.warn('invalid saved user', e); localStorage.removeItem('currentUser'); }
+        }
+    });
     </script>
 </body>
 </html>
