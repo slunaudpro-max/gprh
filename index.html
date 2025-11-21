@@ -14,7 +14,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* Simplified + cleaned styles */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             min-height: 100vh;
@@ -251,10 +250,10 @@
                 </div>
             </div>
 
-        </div> <!-- main-content -->
-    </div> <!-- appContainer -->
+        </div>
+    </div>
 
-    <!-- Modals (project, task, member, user) -->
+    <!-- MODALS -->
     <!-- Project Modal -->
     <div class="modal fade" id="projectModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title">Nouveau projet</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -307,7 +306,7 @@
         <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button class="btn btn-primary" id="saveMemberBtn">Enregistrer</button></div>
     </div></div></div>
 
-    <!-- User Modal (admin) -->
+    <!-- User Modal -->
     <div class="modal fade" id="userModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title">Ajouter un utilisateur système</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
@@ -322,12 +321,13 @@
 
     <script>
     /*****************************************************************
-     * CONFIG
+     * CONFIGURATION
      *****************************************************************/
-    const API_URL = 'https://script.google.com/macros/s/AKfycbycwaeUr_TwVEgRRZNWiWO50oz9VLdX2GUPDf2UqKvFmqjjlrnUVPlivGOLvRIrotrw/exec';
+    const AUTH_API_URL = 'https://script.google.com/macros/s/AKfycbybESlz7o1UL0NZHM6zCO0SdZWw8o3RrQxF1a8x_EMZ-m8l5iiRqHg9A94uwMZJmlHsMQ/exec';
+    const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbwDyhV3_v1mciIkytxu5P0X0JDhqVkHx6vmdx2i6OLkVD4BzReNgRLQn5beQPEiPEi_jw/exec';
 
     /*****************************************************************
-     * STATE
+     * ÉTAT GLOBAL
      *****************************************************************/
     let currentUser = null;
     let allProjects = [];
@@ -336,19 +336,13 @@
     let allUsers = [];
     let accessibleProjects = [];
 
-    // Debug logging
-    console.log('Script loaded - API URL:', API_URL);
-
     /*****************************************************************
-     * UTILS: central fetch helper for API actions
-     * Utilisation uniquement de GET avec paramètres URL
+     * FONCTION API GÉNÉRIQUE
      *****************************************************************/
-    async function api(action, method = 'GET', body = null) {
+    async function api(apiUrl, action, method = 'GET', body = null) {
         try {
-            // Toujours utiliser GET avec paramètres URL pour éviter les problèmes CORS
-            let url = API_URL + '?action=' + encodeURIComponent(action);
+            let url = apiUrl + '?action=' + encodeURIComponent(action);
             
-            // Ajouter tous les paramètres body à l'URL
             if (body && typeof body === 'object') {
                 const params = new URLSearchParams();
                 for (const key in body) {
@@ -362,23 +356,22 @@
             console.log('API Call:', url);
             
             const options = { 
-                method: 'GET', // Toujours utiliser GET
+                method: 'GET',
                 headers: {}
             };
 
             const resp = await fetch(url, options);
-            
             const text = await resp.text();
             console.log('API Response:', text);
             
             try {
-                return JSON.parse(text);
+                const result = JSON.parse(text);
+                return result;
             } catch (err) {
-                // Si ce n'est pas du JSON, essayer de détecter un succès
-                if (text.includes('success') || text.includes('Succès') || text.includes('true')) {
+                if (text.includes('success') || text.includes('true')) {
                     return { success: true };
                 }
-                if (text.includes('error') || text.includes('Erreur') || text.includes('false')) {
+                if (text.includes('error') || text.includes('false')) {
                     return { success: false, error: 'Erreur serveur' };
                 }
                 return { success: false, error: 'Réponse non JSON: ' + text };
@@ -390,7 +383,7 @@
     }
 
     /*****************************************************************
-     * LOGIN - Version corrigée avec GET uniquement
+     * AUTHENTIFICATION
      *****************************************************************/
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -405,8 +398,7 @@
         try {
             showLoading(true);
             
-            // Utiliser GET avec paramètres URL
-            const result = await api('authenticate', 'GET', { 
+            const result = await api(AUTH_API_URL, 'authenticate', 'GET', { 
                 email: email, 
                 code: code 
             });
@@ -428,14 +420,14 @@
             }
         } catch (error) {
             console.error('Erreur login:', error);
-            Swal.fire('Erreur', 'Impossible de se connecter: ' + error.message, 'error');
+            Swal.fire('Erreur', 'Impossible de se connecter', 'error');
         } finally {
             showLoading(false);
         }
     });
 
     /*****************************************************************
-     * APP UI helpers
+     * INTERFACE UTILISATEUR
      *****************************************************************/
     function showApp() {
         document.getElementById('loginScreen').style.display = 'none';
@@ -447,8 +439,7 @@
 
     function updateUserInfo() {
         if (!currentUser) return;
-        const name = (currentUser.email || '').split('@')[0] || 'Utilisateur';
-        document.getElementById('userName').textContent = name;
+        document.getElementById('userName').textContent = currentUser.name || currentUser.email.split('@')[0];
         document.getElementById('userRole').textContent = currentUser.role || '';
     }
 
@@ -486,10 +477,15 @@
         const activeLink = document.querySelector(`[data-view="${viewName}"]`);
         if (activeLink) activeLink.classList.add('active');
 
-        const titles = { dashboard: 'Tableau de bord', projects: 'Gestion des Projets', tasks: 'Gestion des Tâches', members: 'Gestion des Membres', admin: 'Administration' };
+        const titles = { 
+            dashboard: 'Tableau de bord', 
+            projects: 'Gestion des Projets', 
+            tasks: 'Gestion des Tâches', 
+            members: 'Gestion des Membres', 
+            admin: 'Administration' 
+        };
         document.getElementById('viewTitle').textContent = titles[viewName] || 'Vue';
 
-        // lazy load data if needed
         if (viewName === 'dashboard') loadDashboard();
         if (viewName === 'projects') loadProjects();
         if (viewName === 'tasks') loadTasks();
@@ -508,29 +504,27 @@
     }
 
     /*****************************************************************
-     * DATA LOADING
+     * CHARGEMENT DES DONNÉES
      *****************************************************************/
     async function loadAllData() {
         showLoading(true);
         try {
-            // Fetch séquentiel pour éviter les conflits
-            const pRes = await api('getProjects');
-            const tRes = await api('getTasks');
-            const mRes = await api('getMembers');
-            const uRes = await api('getUsers');
+            const [pRes, tRes, mRes, uRes] = await Promise.all([
+                api(DATA_API_URL, 'getProjects'),
+                api(DATA_API_URL, 'getTasks'),
+                api(DATA_API_URL, 'getMembers'),
+                api(DATA_API_URL, 'getUsers')
+            ]);
 
             allProjects = Array.isArray(pRes) ? pRes : (pRes?.projects || pRes?.data || []);
             allTasks = Array.isArray(tRes) ? tRes : (tRes?.tasks || tRes?.data || []);
             allMembers = Array.isArray(mRes) ? mRes : (mRes?.members || mRes?.data || []);
             allUsers = Array.isArray(uRes) ? uRes : (uRes?.users || uRes?.data || []);
 
-            // Ensure arrays
             allProjects = allProjects || [];
             allTasks = allTasks || [];
             allMembers = allMembers || [];
             allUsers = allUsers || [];
-
-            console.log('Loaded data:', { allProjects, allTasks, allMembers, allUsers });
 
             determineAccessibleProjects();
             await loadDashboard();
@@ -552,7 +546,6 @@
             accessibleProjects = allProjects.filter(p => String(p.manager) === String(currentUser.email));
             return;
         }
-        // simple user: projects where they have tasks assigned
         const projectIds = new Set(allTasks.filter(t => String(t.assignee) === String(currentUser.email)).map(t => String(t.projectId)));
         accessibleProjects = allProjects.filter(p => projectIds.has(String(p.id)));
     }
@@ -568,7 +561,7 @@
     }
 
     /*****************************************************************
-     * RENDERERS: Dashboard / Projects / Tasks / Members / Admin
+     * AFFICHAGE DES DONNÉES
      *****************************************************************/
     async function loadDashboard() {
         const accessibleTasks = getAccessibleTasks();
@@ -588,8 +581,7 @@
             .slice(0, 5);
 
         if (recentTasks.length === 0) {
-            const p = document.createElement('p'); p.className = 'text-muted'; p.textContent = 'Aucune tâche assignée';
-            recentTasksContainer.appendChild(p);
+            recentTasksContainer.innerHTML = '<p class="text-muted">Aucune tâche assignée</p>';
             return;
         }
 
@@ -598,51 +590,24 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'task-card';
 
-            const left = document.createElement('div');
-            left.style.flex = '1';
-            const h6 = document.createElement('h6');
-            h6.style.margin = '0 0 6px 0';
-            h6.textContent = task.name || 'Tâche';
-            const smallProj = document.createElement('small');
-            smallProj.className = 'text-muted';
-            smallProj.textContent = project ? project.name : 'Projet';
-            const br = document.createElement('br');
-
-            const desc = document.createElement('small');
-            if (task.description) {
-                desc.textContent = (task.description.length > 60) ? (task.description.substring(0, 60) + '...') : task.description;
-                desc.style.display = 'block';
-            }
-            const dates = document.createElement('small');
-            dates.textContent = `Dates: ${task.startDate || '-'} au ${task.endDate || '-'}`;
-
-            left.appendChild(h6);
-            left.appendChild(smallProj);
-            left.appendChild(br);
-            if (task.description) left.appendChild(desc);
-            left.appendChild(dates);
-
-            const badges = document.createElement('div');
-            badges.style.marginLeft = '12px';
-            const pri = document.createElement('span'); pri.className = 'badge-priority';
-            pri.style.background = task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745';
-            pri.textContent = task.priority || 'Moyenne';
-            const st = document.createElement('span'); st.className = 'badge ms-1';
-            st.style.background = task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d';
-            st.style.color = '#fff';
-            st.textContent = task.status || 'À faire';
-
-            badges.appendChild(pri);
-            badges.appendChild(st);
-
-            const container = document.createElement('div');
-            container.style.display = 'flex';
-            container.style.justifyContent = 'space-between';
-            container.style.alignItems = 'start';
-            container.appendChild(left);
-            container.appendChild(badges);
-
-            wrapper.appendChild(container);
+            wrapper.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <h6 style="margin: 0 0 6px 0;">${escapeHtml(task.name || 'Tâche')}</h6>
+                        <small class="text-muted">${escapeHtml(project ? project.name : 'Projet')}</small><br>
+                        ${task.description ? `<small>${escapeHtml(task.description.length > 60 ? task.description.substring(0, 60) + '...' : task.description)}</small>` : ''}
+                        <small>Dates: ${task.startDate || '-'} au ${task.endDate || '-'}</small>
+                    </div>
+                    <div>
+                        <span class="badge-priority" style="background: ${task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745'}">
+                            ${task.priority || 'Moyenne'}
+                        </span>
+                        <span class="badge ms-1" style="background: ${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'}; color: #fff;">
+                            ${task.status || 'À faire'}
+                        </span>
+                    </div>
+                </div>
+            `;
             recentTasksContainer.appendChild(wrapper);
         });
     }
@@ -650,33 +615,40 @@
     async function loadProjects() {
         const tbody = document.getElementById('projectsTable');
         tbody.innerHTML = '';
+        
         accessibleProjects.forEach(project => {
-            const tr = document.createElement('tr');
-            const tdName = document.createElement('td'); tdName.innerHTML = `<strong>${escapeHtml(project.name || '-')}</strong>`;
-            const tdDesc = document.createElement('td'); tdDesc.textContent = project.description || '-';
-            const tdDates = document.createElement('td'); tdDates.textContent = `${project.startDate || '-'} à ${project.endDate || '-'}`;
             const manager = allMembers.find(m => String(m.email) === String(project.manager));
-            const tdManager = document.createElement('td'); tdManager.textContent = manager ? manager.name : (project.manager || '-');
-
-            const tdActions = document.createElement('td');
-            if (currentUser.role === 'Administrateur' || currentUser.role === 'Responsable Projet') {
-                const editBtn = document.createElement('button'); editBtn.className = 'btn btn-sm btn-warning me-1'; editBtn.innerHTML = '<i class="bi bi-pencil"></i>'; editBtn.onclick = () => editProject(project.id);
-                const delBtn = document.createElement('button'); delBtn.className = 'btn btn-sm btn-danger'; delBtn.innerHTML = '<i class="bi bi-trash"></i>'; delBtn.onclick = () => deleteProject(project.id);
-                tdActions.appendChild(editBtn); tdActions.appendChild(delBtn);
-            } else {
-                const viewBtn = document.createElement('button'); viewBtn.className = 'btn btn-sm btn-info'; viewBtn.innerHTML = '<i class="bi bi-eye"></i>';
-                tdActions.appendChild(viewBtn);
-            }
-
-            tr.appendChild(tdName); tr.appendChild(tdDesc); tr.appendChild(tdDates); tr.appendChild(tdManager); tr.appendChild(tdActions);
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(project.name || '-')}</strong></td>
+                <td>${escapeHtml(project.description || '-')}</td>
+                <td>${project.startDate || '-'} à ${project.endDate || '-'}</td>
+                <td>${escapeHtml(manager ? manager.name : (project.manager || '-'))}</td>
+                <td>
+                    ${currentUser.role === 'Administrateur' || currentUser.role === 'Responsable Projet' ? 
+                        `<button class="btn btn-sm btn-warning me-1" onclick="editProject('${project.id}')">
+                            <i class="bi bi-pencil"></i>
+                         </button>
+                         <button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}')">
+                            <i class="bi bi-trash"></i>
+                         </button>` :
+                        `<button class="btn btn-sm btn-info">
+                            <i class="bi bi-eye"></i>
+                         </button>`
+                    }
+                </td>
+            `;
             tbody.appendChild(tr);
         });
 
-        // fill managers select
         const managerSelect = document.getElementById('projectManager');
         managerSelect.innerHTML = '<option value="">Sélectionner un membre</option>';
         allMembers.forEach(m => {
-            const opt = document.createElement('option'); opt.value = m.email; opt.textContent = m.name; managerSelect.appendChild(opt);
+            const opt = document.createElement('option');
+            opt.value = m.email;
+            opt.textContent = m.name;
+            managerSelect.appendChild(opt);
         });
     }
 
@@ -684,73 +656,93 @@
         const accessibleTasks = getAccessibleTasks();
         const tasksList = document.getElementById('tasksList');
         const projectFilter = document.getElementById('projectFilter');
-        const statusFilter = document.getElementById('statusFilter');
 
         projectFilter.innerHTML = '<option value="">Tous les projets</option>';
-        accessibleProjects.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; projectFilter.appendChild(o); });
+        accessibleProjects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            projectFilter.appendChild(opt);
+        });
 
         function renderFiltered() {
             const pid = projectFilter.value;
-            const status = statusFilter.value;
+            const status = document.getElementById('statusFilter').value;
             let filtered = accessibleTasks.slice();
+            
             if (pid) filtered = filtered.filter(t => String(t.projectId) === String(pid));
             if (status) filtered = filtered.filter(t => t.status === status);
 
             tasksList.innerHTML = '';
+            
             if (filtered.length === 0) {
-                const p = document.createElement('p'); p.className = 'text-muted'; p.textContent = 'Aucune tâche trouvée';
-                tasksList.appendChild(p); return;
+                tasksList.innerHTML = '<p class="text-muted">Aucune tâche trouvée</p>';
+                return;
             }
 
             filtered.forEach(task => {
                 const project = allProjects.find(p => String(p.id) === String(task.projectId));
                 const assignee = allMembers.find(m => String(m.email) === String(task.assignee));
+                const canEdit = currentUser.role === 'Administrateur' || 
+                               (currentUser.role === 'Responsable Projet' && 
+                                accessibleProjects.find(p => String(p.id) === String(task.projectId)));
 
-                const card = document.createElement('div'); card.className = 'task-card';
-                const container = document.createElement('div'); container.style.display = 'flex'; container.style.justifyContent ='space-between';
-
-                const left = document.createElement('div'); left.style.flex='1';
-                const title = document.createElement('h6'); title.style.margin='0 0 6px 0'; title.textContent = task.name;
-                const proj = document.createElement('small'); proj.className='text-muted'; proj.textContent = project ? project.name : 'Projet';
-                const desc = document.createElement('small'); if (task.description) { desc.textContent = 'Description: ' + task.description; desc.style.display='block'; }
-                const ass = document.createElement('small'); ass.textContent = 'Assigné à: ' + (assignee ? assignee.name : task.assignee);
-                const dates = document.createElement('small'); dates.textContent = `Dates: ${task.startDate || '-'} au ${task.endDate || '-'}`;
-
-                left.appendChild(title); left.appendChild(proj); left.appendChild(document.createElement('br'));
-                if (task.description) left.appendChild(desc);
-                left.appendChild(ass); left.appendChild(document.createElement('br')); left.appendChild(dates);
-
-                const right = document.createElement('div');
-                const pri = document.createElement('span'); pri.className='badge-priority'; pri.style.background = task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745'; pri.textContent = task.priority;
-                const st = document.createElement('span'); st.className='badge ms-1'; st.style.background = task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'; st.style.color = '#fff'; st.textContent = task.status;
-
-                right.appendChild(pri); right.appendChild(document.createElement('br')); right.appendChild(st);
-
-                container.appendChild(left); container.appendChild(right);
-                card.appendChild(container);
-
-                // actions for admins / project managers on project they manage
-                if (currentUser.role === 'Administrateur' || (currentUser.role === 'Responsable Projet' && accessibleProjects.find(p => String(p.id) === String(task.projectId)))) {
-                    const actionsDiv = document.createElement('div'); actionsDiv.className = 'mt-2';
-                    const editBtn = document.createElement('button'); editBtn.className='btn btn-sm btn-warning me-1'; editBtn.innerHTML='<i class="bi bi-pencil"></i> Modifier'; editBtn.onclick = () => editTask(task.id);
-                    const delBtn = document.createElement('button'); delBtn.className='btn btn-sm btn-danger'; delBtn.innerHTML='<i class="bi bi-trash"></i> Supprimer'; delBtn.onclick = () => deleteTask(task.id);
-                    actionsDiv.appendChild(editBtn); actionsDiv.appendChild(delBtn); card.appendChild(actionsDiv);
-                }
-
-                tasksList.appendChild(card);
+                tasksList.innerHTML += `
+                    <div class="task-card">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div style="flex: 1;">
+                                <h6 style="margin: 0 0 6px 0;">${escapeHtml(task.name)}</h6>
+                                <small class="text-muted">${escapeHtml(project ? project.name : 'Projet')}</small><br>
+                                ${task.description ? `<small>Description: ${escapeHtml(task.description)}</small><br>` : ''}
+                                <small>Assigné à: ${escapeHtml(assignee ? assignee.name : task.assignee)}</small><br>
+                                <small>Dates: ${task.startDate || '-'} au ${task.endDate || '-'}</small>
+                            </div>
+                            <div>
+                                <span class="badge-priority" style="background: ${task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745'}">
+                                    ${task.priority}
+                                </span><br>
+                                <span class="badge ms-1 mt-1" style="background: ${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'}; color: #fff;">
+                                    ${task.status}
+                                </span>
+                            </div>
+                        </div>
+                        ${canEdit ? `
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-warning me-1" onclick="editTask('${task.id}')">
+                                <i class="bi bi-pencil"></i> Modifier
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTask('${task.id}')">
+                                <i class="bi bi-trash"></i> Supprimer
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
             });
         }
 
         projectFilter.addEventListener('change', renderFiltered);
-        statusFilter.addEventListener('change', renderFiltered);
+        document.getElementById('statusFilter').addEventListener('change', renderFiltered);
         renderFiltered();
 
-        // fill task form selects
-        const taskProject = document.getElementById('taskProject'); taskProject.innerHTML = '<option value="">Sélectionner un projet</option>';
-        accessibleProjects.forEach(p => { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; taskProject.appendChild(opt); });
+        // Remplir les selects du formulaire
+        const taskProject = document.getElementById('taskProject');
+        taskProject.innerHTML = '<option value="">Sélectionner un projet</option>';
+        accessibleProjects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            taskProject.appendChild(opt);
+        });
 
-        const taskAssignee = document.getElementById('taskAssignee'); taskAssignee.innerHTML = '<option value="">Sélectionner un membre</option>';
-        allMembers.forEach(m => { const opt = document.createElement('option'); opt.value = m.email; opt.textContent = m.name; taskAssignee.appendChild(opt); });
+        const taskAssignee = document.getElementById('taskAssignee');
+        taskAssignee.innerHTML = '<option value="">Sélectionner un membre</option>';
+        allMembers.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.email;
+            opt.textContent = m.name;
+            taskAssignee.appendChild(opt);
+        });
     }
 
     async function loadMembers() {
@@ -766,19 +758,26 @@
 
         displayMembers.forEach(member => {
             const memberTasks = allTasks.filter(t => String(t.assignee) === String(member.email));
-            const tr = document.createElement('tr');
-            const tdName = document.createElement('td'); tdName.textContent = member.name;
-            const tdEmail = document.createElement('td'); tdEmail.textContent = member.email;
-            const tdRole = document.createElement('td'); tdRole.textContent = member.role;
-            const tdProjects = document.createElement('td'); tdProjects.textContent = memberTasks.length;
-            const tdActions = document.createElement('td');
-            if (currentUser.role === 'Administrateur') {
-                const editBtn = document.createElement('button'); editBtn.className='btn btn-sm btn-warning me-1'; editBtn.innerHTML='<i class="bi bi-pencil"></i>'; editBtn.onclick = () => editMember(member.id);
-                const delBtn = document.createElement('button'); delBtn.className='btn btn-sm btn-danger'; delBtn.innerHTML='<i class="bi bi-trash"></i>'; delBtn.onclick = () => deleteMember(member.id);
-                tdActions.appendChild(editBtn); tdActions.appendChild(delBtn);
-            }
-            tr.appendChild(tdName); tr.appendChild(tdEmail); tr.appendChild(tdRole); tr.appendChild(tdProjects); tr.appendChild(tdActions);
-            membersTable.appendChild(tr);
+            const canEdit = currentUser.role === 'Administrateur';
+
+            membersTable.innerHTML += `
+                <tr>
+                    <td>${escapeHtml(member.name)}</td>
+                    <td>${escapeHtml(member.email)}</td>
+                    <td>${escapeHtml(member.role)}</td>
+                    <td>${memberTasks.length}</td>
+                    <td>
+                        ${canEdit ? `
+                        <button class="btn btn-sm btn-warning me-1" onclick="editMember('${member.id}')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteMember('${member.id}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
         });
     }
 
@@ -787,17 +786,27 @@
             Swal.fire('Accès refusé', 'Vous n\'avez pas accès à cette section', 'error');
             return;
         }
-        // ensure users are up-to-date
-        const usersRes = await api('getUsers');
+
+        const usersRes = await api(DATA_API_URL, 'getUsers');
         allUsers = Array.isArray(usersRes) ? usersRes : (usersRes.users || allUsers);
 
-        const usersList = document.getElementById('usersList'); usersList.innerHTML = '';
+        const usersList = document.getElementById('usersList');
+        usersList.innerHTML = '';
+
         allUsers.forEach(u => {
-            const div = document.createElement('div'); div.className='card mb-2';
-            const body = document.createElement('div'); body.className='card-body d-flex justify-content-between align-items-center';
-            const left = document.createElement('div'); left.innerHTML = `<strong>${escapeHtml(u.email)}</strong><br><small class="text-muted">${escapeHtml(u.role || '')}</small>`;
-            const delBtn = document.createElement('button'); delBtn.className='btn btn-sm btn-danger'; delBtn.innerHTML='<i class="bi bi-trash"></i>'; delBtn.onclick = () => deleteUser(u.email);
-            body.appendChild(left); body.appendChild(delBtn); div.appendChild(body); usersList.appendChild(div);
+            usersList.innerHTML += `
+                <div class="card mb-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${escapeHtml(u.email)}</strong><br>
+                            <small class="text-muted">${escapeHtml(u.role || '')}</small>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.email}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
         });
 
         document.getElementById('usersCount').textContent = allUsers.length;
@@ -807,8 +816,7 @@
     }
 
     /*****************************************************************
-     * ACTIONS: saveProject, saveTask, saveMember, saveUser, delete...
-     * Toutes les actions utilisent GET avec paramètres URL
+     * ACTIONS CRUD
      *****************************************************************/
     document.getElementById('saveProjectBtn').addEventListener('click', saveProject);
     document.getElementById('saveTaskBtn').addEventListener('click', saveTask);
@@ -828,7 +836,7 @@
         }
 
         try {
-            const res = await api('addProject', 'GET', { 
+            const res = await api(DATA_API_URL, 'addProject', 'GET', { 
                 name, 
                 description, 
                 startDate, 
@@ -866,7 +874,7 @@
         }
 
         try {
-            const res = await api('addTask', 'GET', { 
+            const res = await api(DATA_API_URL, 'addTask', 'GET', { 
                 name, 
                 description, 
                 projectId, 
@@ -902,7 +910,7 @@
         }
 
         try {
-            const res = await api('addMember', 'GET', { 
+            const res = await api(DATA_API_URL, 'addMember', 'GET', { 
                 name, 
                 email, 
                 role 
@@ -933,7 +941,7 @@
         }
 
         try {
-            const res = await api('addUser', 'GET', { 
+            const res = await api(DATA_API_URL, 'addUser', 'GET', { 
                 email, 
                 code, 
                 role 
@@ -955,28 +963,28 @@
     async function deleteProject(projectId) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api('deleteProject', 'GET', { id: projectId });
+        const res = await api(DATA_API_URL, 'deleteProject', 'GET', { id: projectId });
         if (res && res.success) { await loadAllData(); showView('projects'); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
     }
 
     async function deleteTask(taskId) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api('deleteTask', 'GET', { id: taskId });
+        const res = await api(DATA_API_URL, 'deleteTask', 'GET', { id: taskId });
         if (res && res.success) { await loadAllData(); showView('tasks'); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
     }
 
     async function deleteMember(memberId) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api('deleteMember', 'GET', { id: memberId });
+        const res = await api(DATA_API_URL, 'deleteMember', 'GET', { id: memberId });
         if (res && res.success) { await loadAllData(); showView('members'); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
     }
 
     async function deleteUser(email) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api('deleteUser', 'GET', { email });
+        const res = await api(DATA_API_URL, 'deleteUser', 'GET', { email });
         if (res && res.success) { await loadAdmin(); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
     }
 
@@ -985,24 +993,30 @@
     function editMember(memberId) { Swal.fire('Info', 'Modification en cours de développement', 'info'); }
 
     /*****************************************************************
-     * INIT: restore session if present
+     * INITIALISATION
      *****************************************************************/
     window.addEventListener('load', async () => {
         const saved = localStorage.getItem('currentUser');
         if (saved) {
-            try { currentUser = JSON.parse(saved); showApp(); await loadAllData(); }
-            catch (e) { console.warn('session parse error', e); localStorage.removeItem('currentUser'); }
+            try { 
+                currentUser = JSON.parse(saved); 
+                showApp(); 
+                await loadAllData(); 
+            } catch (e) { 
+                console.warn('session parse error', e); 
+                localStorage.removeItem('currentUser'); 
+            }
         }
     });
 
     /*****************************************************************
-     * Small helpers
+     * UTILITAIRES
      *****************************************************************/
     function escapeHtml(str) {
         if (!str) return '';
-        return String(str).replace(/[&<>"'`=\/]/g, function(s) {
-            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',"/":'&#x2F;','`':'&#x60;','=':'&#x3D;'})[s];
-        });
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
     </script>
 </body>
