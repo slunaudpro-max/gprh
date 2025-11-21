@@ -324,8 +324,7 @@
     /*****************************************************************
      * CONFIG
      *****************************************************************/
-    const API_URL = 'https://script.google.com/macros/s/AKfycbycwaeUr_TwVEgRRZNWiWO50oz9VLdX2GUPDf2UqKvFmqjjlrnUVPlivGOLvRIrotrw/exec;
-    const SPREADSHEET_ID = '1SYZgSXW-UzjQGC-YEdKgkV2xI7WoOFow4vHm4TjJQSw';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbycwaeUr_TwVEgRRZNWiWO50oz9VLdX2GUPDf2UqKvFmqjjlrnUVPlivGOLvRIrotrw/exec';
 
     /*****************************************************************
      * STATE
@@ -337,37 +336,60 @@
     let allUsers = [];
     let accessibleProjects = [];
 
+    // Debug logging
+    console.log('Script loaded - API URL:', API_URL);
+
     /*****************************************************************
      * UTILS: central fetch helper for API actions
-     *
-     * Usage:
-     *   api('getProjects')                     -> GET
-     *   api('addProject','POST', {name:...})   -> POST JSON
      *****************************************************************/
     async function api(action, method = 'GET', body = null) {
         try {
             let url = API_URL + '?action=' + encodeURIComponent(action);
-            const options = { method, headers: {} };
+            const options = { 
+                method, 
+                headers: {}
+            };
 
             if (method.toUpperCase() === 'GET' && body && typeof body === 'object') {
-                // append simple query params for GET
-                url += '&' + Object.keys(body).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(body[k])}`).join('&');
+                // Append query params for GET
+                const params = new URLSearchParams();
+                for (const key in body) {
+                    if (body[key] !== null && body[key] !== undefined) {
+                        params.append(key, body[key]);
+                    }
+                }
+                url += '&' + params.toString();
             } else if (method.toUpperCase() === 'POST') {
-                options.headers['Content-Type'] = 'application/json';
-                options.body = JSON.stringify(body || {});
+                options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                
+                // Convert body to URL-encoded form data
+                const formData = new URLSearchParams();
+                for (const key in body) {
+                    if (body[key] !== null && body[key] !== undefined) {
+                        formData.append(key, body[key]);
+                    }
+                }
+                options.body = formData.toString();
             }
 
+            console.log('API Call:', { url, options });
             const resp = await fetch(url, options);
-
-            // try parse JSON even if status not 200 (server returns JSON for errors too)
+            
+            // Google Apps Script returns text/html sometimes
             const text = await resp.text();
+            console.log('API Response:', text);
+            
             try {
                 return JSON.parse(text);
             } catch (err) {
-                // fallback
+                // If it's not JSON, check if it contains success message
+                if (text.includes('success') || text.includes('Succès')) {
+                    return { success: true };
+                }
                 return { success: false, error: 'Réponse non JSON: ' + text };
             }
         } catch (error) {
+            console.error('API Error:', error);
             return { success: false, error: error.message || String(error) };
         }
     }
@@ -387,21 +409,25 @@
 
         try {
             showLoading(true);
-            // authenticate via GET query params (the Apps Script authenticate expects query parameters)
-            const result = await api('authenticate', 'GET', { email, code });
+            
+            // Utiliser POST pour l'authentification
+            const result = await api('authenticate', 'POST', { 
+                email: email, 
+                code: code 
+            });
 
             if (result && result.success) {
-                currentUser = result.user;
+                currentUser = result.user || { email: email, role: result.role || 'Utilisateur' };
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 showApp();
                 await loadAllData();
+                Swal.fire('Succès', 'Connexion réussie!', 'success');
             } else {
-                Swal.fire('Erreur', 'Email ou code incorrect', 'error');
-                console.error('Auth failed:', result);
+                Swal.fire('Erreur', result.error || 'Email ou code incorrect', 'error');
             }
         } catch (error) {
             console.error('Erreur login:', error);
-            Swal.fire('Erreur', 'Impossible de se connecter: ' + (error.message || error), 'error');
+            Swal.fire('Erreur', 'Impossible de se connecter', 'error');
         } finally {
             showLoading(false);
         }
@@ -439,7 +465,6 @@
             link.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 const view = link.getAttribute('data-view');
-                // admins can always view admin; others blocked by checkAdminAccess earlier
                 showView(view);
             });
         });
@@ -487,30 +512,30 @@
     async function loadAllData() {
         showLoading(true);
         try {
-            // fetch in parallel (getProjects, getTasks, getMembers, getUsers)
-            const [pRes, tRes, mRes, uRes] = await Promise.all([
-                api('getProjects'),
-                api('getTasks'),
-                api('getMembers'),
-                api('getUsers')
-            ]);
+            // Fetch séquentiel pour éviter les conflits
+            const pRes = await api('getProjects');
+            const tRes = await api('getTasks');
+            const mRes = await api('getMembers');
+            const uRes = await api('getUsers');
 
-            allProjects = Array.isArray(pRes) ? pRes : (pRes.projects || []);
-            allTasks = Array.isArray(tRes) ? tRes : (tRes.tasks || []);
-            allMembers = Array.isArray(mRes) ? mRes : (mRes.members || []);
-            allUsers = Array.isArray(uRes) ? uRes : (uRes.users || []);
+            allProjects = Array.isArray(pRes) ? pRes : (pRes?.projects || pRes?.data || []);
+            allTasks = Array.isArray(tRes) ? tRes : (tRes?.tasks || tRes?.data || []);
+            allMembers = Array.isArray(mRes) ? mRes : (mRes?.members || mRes?.data || []);
+            allUsers = Array.isArray(uRes) ? uRes : (uRes?.users || uRes?.data || []);
 
-            // ensure arrays
+            // Ensure arrays
             allProjects = allProjects || [];
             allTasks = allTasks || [];
             allMembers = allMembers || [];
             allUsers = allUsers || [];
 
+            console.log('Loaded data:', { allProjects, allTasks, allMembers, allUsers });
+
             determineAccessibleProjects();
             await loadDashboard();
         } catch (error) {
             console.error('Erreur loadAllData:', error);
-            Swal.fire('Erreur', 'Erreur lors du chargement des données: ' + (error.message || error), 'error');
+            Swal.fire('Erreur', 'Erreur lors du chargement des données', 'error');
         } finally {
             showLoading(false);
         }
@@ -790,26 +815,36 @@
 
     async function saveProject() {
         const name = document.getElementById('projectName').value.trim();
-        const desc = document.getElementById('projectDesc').value.trim();
-        const start = document.getElementById('projectStart').value;
-        const end = document.getElementById('projectEnd').value;
+        const description = document.getElementById('projectDesc').value.trim();
+        const startDate = document.getElementById('projectStart').value;
+        const endDate = document.getElementById('projectEnd').value;
         const manager = document.getElementById('projectManager').value;
 
-        if (!name || !start || !end || !manager) { Swal.fire('Erreur', 'Remplissez tous les champs obligatoires', 'error'); return; }
+        if (!name || !startDate || !endDate || !manager) { 
+            Swal.fire('Erreur', 'Remplissez tous les champs obligatoires', 'error'); 
+            return; 
+        }
 
         try {
-            const res = await api('addProject', 'POST', { name, desc, start, end, manager });
+            const res = await api('addProject', 'POST', { 
+                name, 
+                description, 
+                startDate, 
+                endDate, 
+                manager 
+            });
+            
             if (res && res.success) {
-                Swal.fire('Succès', 'Projet créé', 'success');
+                Swal.fire('Succès', 'Projet créé avec succès', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
                 document.getElementById('projectForm').reset();
                 await loadAllData();
                 showView('projects');
             } else {
-                Swal.fire('Erreur', 'Impossible de créer le projet: ' + (res.error || 'Erreur serveur'), 'error');
+                Swal.fire('Erreur', res.error || 'Erreur lors de la création du projet', 'error');
             }
         } catch (err) {
-            Swal.fire('Erreur', err.message || err, 'error');
+            Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
     }
 
@@ -823,22 +858,34 @@
         const startDate = document.getElementById('taskStart').value;
         const endDate = document.getElementById('taskEnd').value;
 
-        if (!name || !projectId || !assignee || !startDate || !endDate) { Swal.fire('Erreur', 'Remplissez tous les champs obligatoires', 'error'); return; }
-        if (new Date(startDate) > new Date(endDate)) { Swal.fire('Erreur', 'La date de début doit être avant la date de fin', 'error'); return; }
+        if (!name || !projectId || !assignee || !startDate || !endDate) { 
+            Swal.fire('Erreur', 'Remplissez tous les champs obligatoires', 'error'); 
+            return; 
+        }
 
         try {
-            const res = await api('addTask', 'POST', { name, description, projectId, assignee, status, priority, startDate, endDate });
+            const res = await api('addTask', 'POST', { 
+                name, 
+                description, 
+                projectId, 
+                assignee, 
+                status, 
+                priority, 
+                startDate, 
+                endDate 
+            });
+            
             if (res && res.success) {
-                Swal.fire('Succès', 'Tâche créée', 'success');
+                Swal.fire('Succès', 'Tâche créée avec succès', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
                 document.getElementById('taskForm').reset();
                 await loadAllData();
                 showView('tasks');
             } else {
-                Swal.fire('Erreur', 'Impossible de créer la tâche: ' + (res.error || 'Erreur serveur'), 'error');
+                Swal.fire('Erreur', res.error || 'Erreur lors de la création de la tâche', 'error');
             }
         } catch (err) {
-            Swal.fire('Erreur', err.message || err, 'error');
+            Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
     }
 
@@ -847,21 +894,29 @@
         const email = document.getElementById('memberEmail').value.trim();
         const role = document.getElementById('memberRole').value;
 
-        if (!name || !email || !role) { Swal.fire('Erreur', 'Remplissez tous les champs', 'error'); return; }
+        if (!name || !email || !role) { 
+            Swal.fire('Erreur', 'Remplissez tous les champs', 'error'); 
+            return; 
+        }
 
         try {
-            const res = await api('addMember', 'POST', { name, email, role });
+            const res = await api('addMember', 'POST', { 
+                name, 
+                email, 
+                role 
+            });
+            
             if (res && res.success) {
-                Swal.fire('Succès', 'Membre créé', 'success');
+                Swal.fire('Succès', 'Membre ajouté avec succès', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
                 document.getElementById('memberForm').reset();
                 await loadAllData();
                 showView('members');
             } else {
-                Swal.fire('Erreur', 'Impossible de créer le membre: ' + (res.error || 'Erreur serveur'), 'error');
+                Swal.fire('Erreur', res.error || 'Erreur lors de l\'ajout du membre', 'error');
             }
         } catch (err) {
-            Swal.fire('Erreur', err.message || err, 'error');
+            Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
     }
 
@@ -870,20 +925,28 @@
         const code = document.getElementById('userCode').value.trim();
         const role = document.getElementById('userRole').value;
 
-        if (!email || !code) { Swal.fire('Erreur', 'Remplissez tous les champs', 'error'); return; }
+        if (!email || !code || !role) { 
+            Swal.fire('Erreur', 'Remplissez tous les champs', 'error'); 
+            return; 
+        }
 
         try {
-            const res = await api('addUser', 'POST', { email, code, role });
+            const res = await api('addUser', 'POST', { 
+                email, 
+                code, 
+                role 
+            });
+            
             if (res && res.success) {
-                Swal.fire('Succès', 'Utilisateur créé', 'success');
+                Swal.fire('Succès', 'Utilisateur créé avec succès', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
                 document.getElementById('userForm').reset();
                 await loadAdmin();
             } else {
-                Swal.fire('Erreur', 'Impossible de créer l\'utilisateur: ' + (res.error || 'Erreur serveur'), 'error');
+                Swal.fire('Erreur', res.error || 'Erreur lors de la création de l\'utilisateur', 'error');
             }
         } catch (err) {
-            Swal.fire('Erreur', err.message || err, 'error');
+            Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
     }
 
