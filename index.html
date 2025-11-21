@@ -341,17 +341,15 @@
 
     /*****************************************************************
      * UTILS: central fetch helper for API actions
+     * Utilisation uniquement de GET avec paramètres URL
      *****************************************************************/
     async function api(action, method = 'GET', body = null) {
         try {
+            // Toujours utiliser GET avec paramètres URL pour éviter les problèmes CORS
             let url = API_URL + '?action=' + encodeURIComponent(action);
-            const options = { 
-                method, 
-                headers: {}
-            };
-
-            if (method.toUpperCase() === 'GET' && body && typeof body === 'object') {
-                // Append query params for GET
+            
+            // Ajouter tous les paramètres body à l'URL
+            if (body && typeof body === 'object') {
                 const params = new URLSearchParams();
                 for (const key in body) {
                     if (body[key] !== null && body[key] !== undefined) {
@@ -359,32 +357,29 @@
                     }
                 }
                 url += '&' + params.toString();
-            } else if (method.toUpperCase() === 'POST') {
-                options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-                
-                // Convert body to URL-encoded form data
-                const formData = new URLSearchParams();
-                for (const key in body) {
-                    if (body[key] !== null && body[key] !== undefined) {
-                        formData.append(key, body[key]);
-                    }
-                }
-                options.body = formData.toString();
             }
 
-            console.log('API Call:', { url, options });
+            console.log('API Call:', url);
+            
+            const options = { 
+                method: 'GET', // Toujours utiliser GET
+                headers: {}
+            };
+
             const resp = await fetch(url, options);
             
-            // Google Apps Script returns text/html sometimes
             const text = await resp.text();
             console.log('API Response:', text);
             
             try {
                 return JSON.parse(text);
             } catch (err) {
-                // If it's not JSON, check if it contains success message
-                if (text.includes('success') || text.includes('Succès')) {
+                // Si ce n'est pas du JSON, essayer de détecter un succès
+                if (text.includes('success') || text.includes('Succès') || text.includes('true')) {
                     return { success: true };
+                }
+                if (text.includes('error') || text.includes('Erreur') || text.includes('false')) {
+                    return { success: false, error: 'Erreur serveur' };
                 }
                 return { success: false, error: 'Réponse non JSON: ' + text };
             }
@@ -395,7 +390,7 @@
     }
 
     /*****************************************************************
-     * LOGIN
+     * LOGIN - Version corrigée avec GET uniquement
      *****************************************************************/
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -410,14 +405,20 @@
         try {
             showLoading(true);
             
-            // Utiliser POST pour l'authentification
-            const result = await api('authenticate', 'POST', { 
+            // Utiliser GET avec paramètres URL
+            const result = await api('authenticate', 'GET', { 
                 email: email, 
                 code: code 
             });
 
+            console.log('Login result:', result);
+
             if (result && result.success) {
-                currentUser = result.user || { email: email, role: result.role || 'Utilisateur' };
+                currentUser = result.user || { 
+                    email: email, 
+                    role: result.role || 'Utilisateur',
+                    name: email.split('@')[0]
+                };
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 showApp();
                 await loadAllData();
@@ -427,7 +428,7 @@
             }
         } catch (error) {
             console.error('Erreur login:', error);
-            Swal.fire('Erreur', 'Impossible de se connecter', 'error');
+            Swal.fire('Erreur', 'Impossible de se connecter: ' + error.message, 'error');
         } finally {
             showLoading(false);
         }
@@ -807,6 +808,7 @@
 
     /*****************************************************************
      * ACTIONS: saveProject, saveTask, saveMember, saveUser, delete...
+     * Toutes les actions utilisent GET avec paramètres URL
      *****************************************************************/
     document.getElementById('saveProjectBtn').addEventListener('click', saveProject);
     document.getElementById('saveTaskBtn').addEventListener('click', saveTask);
@@ -826,7 +828,7 @@
         }
 
         try {
-            const res = await api('addProject', 'POST', { 
+            const res = await api('addProject', 'GET', { 
                 name, 
                 description, 
                 startDate, 
@@ -864,7 +866,7 @@
         }
 
         try {
-            const res = await api('addTask', 'POST', { 
+            const res = await api('addTask', 'GET', { 
                 name, 
                 description, 
                 projectId, 
@@ -900,7 +902,7 @@
         }
 
         try {
-            const res = await api('addMember', 'POST', { 
+            const res = await api('addMember', 'GET', { 
                 name, 
                 email, 
                 role 
@@ -931,7 +933,7 @@
         }
 
         try {
-            const res = await api('addUser', 'POST', { 
+            const res = await api('addUser', 'GET', { 
                 email, 
                 code, 
                 role 
