@@ -1248,7 +1248,7 @@
     const code = document.getElementById('userCode').value.trim();
     const roleSelect = document.getElementById('userRole');
     const role = roleSelect.value;
-
+ 
     // Correction : garantir que le select a bien une valeur mise à jour
     roleSelect.blur();
 
@@ -1260,10 +1260,10 @@
         Swal.fire('Erreur', 'Le code d\'accès est obligatoire', 'error');
         return;
     }
-    if (!role || role === "") {
-        Swal.fire('Erreur', 'Le rôle est obligatoire', 'error');
-        return;
-    }
+    if (role === "" || role === null || role === undefined) {
+    Swal.fire('Erreur', 'Veuillez sélectionner un rôle valide', 'error');
+    return;
+}
 
     try {
         const newUser = {
