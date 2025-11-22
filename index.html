@@ -38,6 +38,18 @@
         .badge-priority { font-size:0.85rem; padding:5px 8px; border-radius:6px; color:#fff; }
         .loading { display:none; text-align:center; padding:20px; }
         .loading.active { display:block; }
+        .sync-status { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 1000;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .sync-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .sync-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .sync-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
         @media (max-width:768px) {
             .sidebar { width:200px; }
             .main-content { margin-left:200px; padding:18px; }
@@ -86,6 +98,7 @@
                 <a class="nav-link text-white" href="#" data-view="members"><i class="bi bi-people"></i> Membres</a>
                 <a class="nav-link text-white" href="#" data-view="admin"><i class="bi bi-gear"></i> Administration</a>
                 <hr style="opacity:0.3;">
+                <a class="nav-link text-white" href="#" id="syncBtn"><i class="bi bi-arrow-repeat"></i> Synchroniser</a>
                 <a class="nav-link text-white" href="#" id="logoutBtn"><i class="bi bi-box-arrow-left"></i> Déconnexion</a>
             </nav>
         </div>
@@ -93,9 +106,14 @@
         <div class="main-content">
             <div class="header-bar bg-white p-3 rounded mb-3 d-flex justify-content-between align-items-center" style="box-shadow:0 2px 10px rgba(0,0,0,0.08);">
                 <h1 id="viewTitle" style="color:#667eea; font-size:1.5rem; margin:0;">Tableau de bord</h1>
-                <div class="user-info text-end" style="color:#666;">
-                    <p style="margin:0;"><strong id="userName">Utilisateur</strong></p>
-                    <p id="userRole" style="margin:0;">Rôle</p>
+                <div class="d-flex align-items-center">
+                    <div id="lastSync" class="text-muted me-3" style="font-size:0.9rem;">
+                        Dernière synchro: <span id="lastSyncTime">Jamais</span>
+                    </div>
+                    <div class="user-info text-end" style="color:#666;">
+                        <p style="margin:0;"><strong id="userName">Utilisateur</strong></p>
+                        <p id="userRole" style="margin:0;">Rôle</p>
+                    </div>
                 </div>
             </div>
 
@@ -244,6 +262,7 @@
                                 <p><strong>Membres:</strong> <span id="membersCount">0</span></p>
                                 <p><strong>Projets:</strong> <span id="projectsCount">0</span></p>
                                 <p><strong>Tâches:</strong> <span id="tasksCount">0</span></p>
+                                <p><strong>Dernière synchro:</strong> <span id="adminSyncTime">Jamais</span></p>
                             </div>
                         </div>
                     </div>
@@ -324,22 +343,171 @@
      * CONFIGURATION
      *****************************************************************/
     const AUTH_API_URL = 'https://script.google.com/macros/s/AKfycbybESlz7o1UL0NZHM6zCO0SdZWw8o3RrQxF1a8x_EMZ-m8l5iiRqHg9A94uwMZJmlHsMQ/exec';
-    const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbwDyhV3_v1mciIkytxu5P0X0JDhqVkHx6vmdx2i6OLkVD4BzReNgRLQn5beQPEiPEi_jw/exec';
-
+    const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbwDyhV3_v1mciIkytxu5P0X0JDhqVkHx6vmdx2i6OLkVD4BzReNgRLQn5beQPEiPEi_jw/exec';   
     /*****************************************************************
-     * ÉTAT GLOBAL
+     * ÉTAT GLOBAL + STOCKAGE LOCAL
      *****************************************************************/
     let currentUser = null;
-    let allProjects = [];
-    let allTasks = [];
-    let allMembers = [];
-    let allUsers = [];
+    let localData = {
+        projects: [],
+        tasks: [],
+        members: [],
+        users: [],
+        lastSync: null,
+        pendingChanges: []
+    };
     let accessibleProjects = [];
+
+    /*****************************************************************
+     * GESTION DU STOCKAGE LOCAL
+     *****************************************************************/
+    function saveLocalData() {
+        localStorage.setItem('projectManagerData', JSON.stringify(localData));
+        console.log('Données sauvegardées localement');
+    }
+
+    function loadLocalData() {
+        const saved = localStorage.getItem('projectManagerData');
+        if (saved) {
+            try {
+                localData = JSON.parse(saved);
+                console.log('Données chargées depuis le stockage local');
+                updateSyncTime();
+                return true;
+            } catch (e) {
+                console.error('Erreur chargement données locales:', e);
+                initLocalData();
+            }
+        } else {
+            initLocalData();
+        }
+        return false;
+    }
+
+    function initLocalData() {
+        localData = {
+            projects: [],
+            tasks: [],
+            members: [],
+            users: [],
+            lastSync: null,
+            pendingChanges: []
+        };
+        saveLocalData();
+    }
+
+    function updateSyncTime() {
+        if (localData.lastSync) {
+            const date = new Date(localData.lastSync);
+            document.getElementById('lastSyncTime').textContent = date.toLocaleString();
+            document.getElementById('adminSyncTime').textContent = date.toLocaleString();
+        }
+    }
+
+    /*****************************************************************
+     * SYNCHRONISATION
+     *****************************************************************/
+    async function syncWithServer() {
+        showLoading(true);
+        showSyncStatus('Synchronisation en cours...', 'warning');
+        
+        try {
+            // Récupérer les données du serveur
+            const [serverProjects, serverTasks, serverMembers, serverUsers] = await Promise.all([
+                apiCall(DATA_API_URL, 'getProjects'),
+                apiCall(DATA_API_URL, 'getTasks'),
+                apiCall(DATA_API_URL, 'getMembers'),
+                apiCall(DATA_API_URL, 'getUsers')
+            ]);
+
+            // Mettre à jour les données locales
+            localData.projects = serverProjects || [];
+            localData.tasks = serverTasks || [];
+            localData.members = serverMembers || [];
+            localData.users = serverUsers || [];
+            localData.lastSync = new Date().toISOString();
+
+            // Appliquer les changements en attente
+            await applyPendingChanges();
+
+            saveLocalData();
+            updateSyncTime();
+            showSyncStatus('Synchronisation réussie!', 'success');
+            
+            // Recharger l'affichage
+            if (currentView) {
+                showView(currentView);
+            }
+            
+        } catch (error) {
+            console.error('Erreur synchronisation:', error);
+            showSyncStatus('Erreur de synchronisation', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function applyPendingChanges() {
+        if (localData.pendingChanges.length === 0) return;
+
+        const results = [];
+        for (const change of localData.pendingChanges) {
+            try {
+                const result = await apiCall(DATA_API_URL, change.action, change.data);
+                results.push({ success: true, change, result });
+            } catch (error) {
+                results.push({ success: false, change, error });
+            }
+        }
+
+        // Filtrer les changements qui ont échoué
+        localData.pendingChanges = localData.pendingChanges.filter((change, index) => 
+            !results[index].success
+        );
+
+        console.log(`${results.filter(r => r.success).length} changements synchronisés`);
+        if (localData.pendingChanges.length > 0) {
+            console.log(`${localData.pendingChanges.length} changements en attente`);
+        }
+    }
+
+    function addPendingChange(action, data) {
+        localData.pendingChanges.push({
+            action,
+            data,
+            timestamp: new Date().toISOString()
+        });
+        saveLocalData();
+    }
+
+    function showSyncStatus(message, type) {
+        // Supprimer les anciens status
+        const oldStatus = document.getElementById('syncStatus');
+        if (oldStatus) oldStatus.remove();
+
+        // Créer le nouveau status
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'syncStatus';
+        statusDiv.className = `sync-status sync-${type}`;
+        statusDiv.innerHTML = `
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-exclamation-triangle' : 'bi-arrow-repeat'}"></i>
+            ${message}
+        `;
+        
+        document.body.appendChild(statusDiv);
+
+        // Auto-suppression après 3 secondes
+        setTimeout(() => {
+            if (statusDiv.parentNode) {
+                statusDiv.remove();
+            }
+        }, 3000);
+    }
 
     /*****************************************************************
      * FONCTION API GÉNÉRIQUE
      *****************************************************************/
-    async function api(apiUrl, action, method = 'GET', body = null) {
+    async function apiCall(apiUrl, action, body = null) {
         try {
             let url = apiUrl + '?action=' + encodeURIComponent(action);
             
@@ -353,32 +521,21 @@
                 url += '&' + params.toString();
             }
 
-            console.log('API Call:', url);
-            
-            const options = { 
-                method: 'GET',
-                headers: {}
-            };
-
+            const options = { method: 'GET' };
             const resp = await fetch(url, options);
             const text = await resp.text();
-            console.log('API Response:', text);
             
             try {
-                const result = JSON.parse(text);
-                return result;
+                return JSON.parse(text);
             } catch (err) {
                 if (text.includes('success') || text.includes('true')) {
                     return { success: true };
                 }
-                if (text.includes('error') || text.includes('false')) {
-                    return { success: false, error: 'Erreur serveur' };
-                }
-                return { success: false, error: 'Réponse non JSON: ' + text };
+                return { success: false, error: 'Réponse non JSON' };
             }
         } catch (error) {
             console.error('API Error:', error);
-            return { success: false, error: error.message || String(error) };
+            throw error;
         }
     }
 
@@ -398,12 +555,7 @@
         try {
             showLoading(true);
             
-            const result = await api(AUTH_API_URL, 'authenticate', 'GET', { 
-                email: email, 
-                code: code 
-            });
-
-            console.log('Login result:', result);
+            const result = await apiCall(AUTH_API_URL, 'authenticate', { email, code });
 
             if (result && result.success) {
                 currentUser = result.user || { 
@@ -412,8 +564,14 @@
                     name: email.split('@')[0]
                 };
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // Charger les données locales
+                loadLocalData();
                 showApp();
-                await loadAllData();
+                
+                // Synchroniser en arrière-plan
+                setTimeout(() => syncWithServer(), 1000);
+                
                 Swal.fire('Succès', 'Connexion réussie!', 'success');
             } else {
                 Swal.fire('Erreur', result.error || 'Email ou code incorrect', 'error');
@@ -429,12 +587,15 @@
     /*****************************************************************
      * INTERFACE UTILISATEUR
      *****************************************************************/
+    let currentView = 'dashboard';
+
     function showApp() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
         updateUserInfo();
         setupNavigation();
         checkAdminAccess();
+        showView('dashboard');
     }
 
     function updateUserInfo() {
@@ -461,6 +622,11 @@
             });
         });
 
+        document.getElementById('syncBtn').addEventListener('click', (ev) => {
+            ev.preventDefault();
+            syncWithServer();
+        });
+
         document.getElementById('logoutBtn').addEventListener('click', (ev) => {
             ev.preventDefault();
             logout();
@@ -468,6 +634,7 @@
     }
 
     function showView(viewName) {
+        currentView = viewName;
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         const viewEl = document.getElementById(viewName);
         if (!viewEl) return;
@@ -486,6 +653,7 @@
         };
         document.getElementById('viewTitle').textContent = titles[viewName] || 'Vue';
 
+        // Utiliser les données locales pour un affichage instantané
         if (viewName === 'dashboard') loadDashboard();
         if (viewName === 'projects') loadProjects();
         if (viewName === 'tasks') loadTasks();
@@ -504,80 +672,54 @@
     }
 
     /*****************************************************************
-     * CHARGEMENT DES DONNÉES
+     * GESTION DES DONNÉES LOCALES
      *****************************************************************/
-    async function loadAllData() {
-        showLoading(true);
-        try {
-            const [pRes, tRes, mRes, uRes] = await Promise.all([
-                api(DATA_API_URL, 'getProjects'),
-                api(DATA_API_URL, 'getTasks'),
-                api(DATA_API_URL, 'getMembers'),
-                api(DATA_API_URL, 'getUsers')
-            ]);
-
-            allProjects = Array.isArray(pRes) ? pRes : (pRes?.projects || pRes?.data || []);
-            allTasks = Array.isArray(tRes) ? tRes : (tRes?.tasks || tRes?.data || []);
-            allMembers = Array.isArray(mRes) ? mRes : (mRes?.members || mRes?.data || []);
-            allUsers = Array.isArray(uRes) ? uRes : (uRes?.users || uRes?.data || []);
-
-            allProjects = allProjects || [];
-            allTasks = allTasks || [];
-            allMembers = allMembers || [];
-            allUsers = allUsers || [];
-
-            determineAccessibleProjects();
-            await loadDashboard();
-        } catch (error) {
-            console.error('Erreur loadAllData:', error);
-            Swal.fire('Erreur', 'Erreur lors du chargement des données', 'error');
-        } finally {
-            showLoading(false);
-        }
-    }
-
     function determineAccessibleProjects() {
         if (!currentUser) { accessibleProjects = []; return; }
         if (currentUser.role === 'Administrateur') {
-            accessibleProjects = [...allProjects];
+            accessibleProjects = [...localData.projects];
             return;
         }
         if (currentUser.role === 'Responsable Projet') {
-            accessibleProjects = allProjects.filter(p => String(p.manager) === String(currentUser.email));
+            accessibleProjects = localData.projects.filter(p => String(p.manager) === String(currentUser.email));
             return;
         }
-        const projectIds = new Set(allTasks.filter(t => String(t.assignee) === String(currentUser.email)).map(t => String(t.projectId)));
-        accessibleProjects = allProjects.filter(p => projectIds.has(String(p.id)));
+        const projectIds = new Set(localData.tasks.filter(t => String(t.assignee) === String(currentUser.email)).map(t => String(t.projectid)));
+        accessibleProjects = localData.projects.filter(p => projectIds.has(String(p.id)));
     }
 
     function getAccessibleTasks() {
         if (!currentUser) return [];
-        if (currentUser.role === 'Administrateur') return allTasks;
+        if (currentUser.role === 'Administrateur') return localData.tasks;
         if (currentUser.role === 'Responsable Projet') {
             const ids = new Set(accessibleProjects.map(p => String(p.id)));
-            return allTasks.filter(t => ids.has(String(t.projectId)));
+            return localData.tasks.filter(t => ids.has(String(t.projectid)));
         }
-        return allTasks.filter(t => String(t.assignee) === String(currentUser.email));
+        return localData.tasks.filter(t => String(t.assignee) === String(currentUser.email));
     }
 
     /*****************************************************************
-     * AFFICHAGE DES DONNÉES
+     * AFFICHAGE DES DONNÉES (LOCALES)
      *****************************************************************/
-    async function loadDashboard() {
+    function loadDashboard() {
+        determineAccessibleProjects();
         const accessibleTasks = getAccessibleTasks();
+        const userTasks = accessibleTasks.filter(t => String(t.assignee) === String(currentUser.email));
+        
         document.getElementById('projectCount').textContent = accessibleProjects.length;
-        document.getElementById('taskCount').textContent = accessibleTasks.filter(t => String(t.assignee) === String(currentUser.email)).length;
-        document.getElementById('completedCount').textContent = accessibleTasks.filter(t => t.status === 'Terminé' && String(t.assignee) === String(currentUser.email)).length;
+        document.getElementById('taskCount').textContent = userTasks.length;
+        document.getElementById('completedCount').textContent = userTasks.filter(t => t.statut === 'Terminé').length;
 
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById('lateCount').textContent = accessibleTasks.filter(t => (t.endDate || '') < today && t.status !== 'Terminé' && String(t.assignee) === String(currentUser.email)).length;
+        document.getElementById('lateCount').textContent = userTasks.filter(t => 
+            (t.datefin || '') < today && t.statut !== 'Terminé'
+        ).length;
 
         const recentTasksContainer = document.getElementById('recentTasks');
         recentTasksContainer.innerHTML = '';
 
-        const recentTasks = accessibleTasks
-            .filter(t => String(t.assignee) === String(currentUser.email))
-            .sort((a, b) => new Date(b.endDate || 0) - new Date(a.endDate || 0))
+        const recentTasks = userTasks
+            .sort((a, b) => new Date(b.datefin || 0) - new Date(a.datefin || 0))
             .slice(0, 5);
 
         if (recentTasks.length === 0) {
@@ -586,24 +728,24 @@
         }
 
         recentTasks.forEach(task => {
-            const project = allProjects.find(p => String(p.id) === String(task.projectId));
+            const project = localData.projects.find(p => String(p.id) === String(task.projectid));
             const wrapper = document.createElement('div');
             wrapper.className = 'task-card';
 
             wrapper.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: start;">
                     <div style="flex: 1;">
-                        <h6 style="margin: 0 0 6px 0;">${escapeHtml(task.name || 'Tâche')}</h6>
-                        <small class="text-muted">${escapeHtml(project ? project.name : 'Projet')}</small><br>
-                        ${task.description ? `<small>${escapeHtml(task.description.length > 60 ? task.description.substring(0, 60) + '...' : task.description)}</small>` : ''}
-                        <small>Dates: ${task.startDate || '-'} au ${task.endDate || '-'}</small>
+                        <h6 style="margin: 0 0 6px 0;">${escapeHtml(task.nom || 'Tâche')}</h6>
+                        <small class="text-muted">${escapeHtml(project ? project.nom : 'Projet')}</small><br>
+                        ${task.description ? `<small>${escapeHtml(task.description.length > 60 ? task.description.substring(0, 60) + '...' : task.description)}</small><br>` : ''}
+                        <small>Dates: ${formatDate(task.datedebut) || '-'} au ${formatDate(task.datefin) || '-'}</small>
                     </div>
                     <div>
-                        <span class="badge-priority" style="background: ${task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745'}">
-                            ${task.priority || 'Moyenne'}
+                        <span class="badge-priority" style="background: ${task.priorité === 'Haute' ? '#dc3545' : task.priorité === 'Moyenne' ? '#ffc107' : '#28a745'}">
+                            ${task.priorité || 'Moyenne'}
                         </span>
-                        <span class="badge ms-1" style="background: ${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'}; color: #fff;">
-                            ${task.status || 'À faire'}
+                        <span class="badge ms-1 mt-1" style="background: ${task.statut === 'Terminé' ? '#28a745' : task.statut === 'En cours' ? '#007bff' : '#6c757d'}; color: #fff;">
+                            ${task.statut || 'À faire'}
                         </span>
                     </div>
                 </div>
@@ -612,19 +754,20 @@
         });
     }
 
-    async function loadProjects() {
+    function loadProjects() {
+        determineAccessibleProjects();
         const tbody = document.getElementById('projectsTable');
         tbody.innerHTML = '';
         
         accessibleProjects.forEach(project => {
-            const manager = allMembers.find(m => String(m.email) === String(project.manager));
+            const manager = localData.members.find(m => String(m.email) === String(project.manager));
             const tr = document.createElement('tr');
             
             tr.innerHTML = `
-                <td><strong>${escapeHtml(project.name || '-')}</strong></td>
+                <td><strong>${escapeHtml(project.nom || '-')}</strong></td>
                 <td>${escapeHtml(project.description || '-')}</td>
-                <td>${project.startDate || '-'} à ${project.endDate || '-'}</td>
-                <td>${escapeHtml(manager ? manager.name : (project.manager || '-'))}</td>
+                <td>${formatDate(project.datedébut) || '-'} à ${formatDate(project.datefin) || '-'}</td>
+                <td>${escapeHtml(manager ? manager.nom : (project.manager || '-'))}</td>
                 <td>
                     ${currentUser.role === 'Administrateur' || currentUser.role === 'Responsable Projet' ? 
                         `<button class="btn btn-sm btn-warning me-1" onclick="editProject('${project.id}')">
@@ -642,17 +785,19 @@
             tbody.appendChild(tr);
         });
 
+        // Remplir le select des managers
         const managerSelect = document.getElementById('projectManager');
         managerSelect.innerHTML = '<option value="">Sélectionner un membre</option>';
-        allMembers.forEach(m => {
+        localData.members.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.email;
-            opt.textContent = m.name;
+            opt.textContent = m.nom;
             managerSelect.appendChild(opt);
         });
     }
 
-    async function loadTasks() {
+    function loadTasks() {
+        determineAccessibleProjects();
         const accessibleTasks = getAccessibleTasks();
         const tasksList = document.getElementById('tasksList');
         const projectFilter = document.getElementById('projectFilter');
@@ -661,7 +806,7 @@
         accessibleProjects.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.textContent = p.name;
+            opt.textContent = p.nom;
             projectFilter.appendChild(opt);
         });
 
@@ -670,8 +815,8 @@
             const status = document.getElementById('statusFilter').value;
             let filtered = accessibleTasks.slice();
             
-            if (pid) filtered = filtered.filter(t => String(t.projectId) === String(pid));
-            if (status) filtered = filtered.filter(t => t.status === status);
+            if (pid) filtered = filtered.filter(t => String(t.projectid) === String(pid));
+            if (status) filtered = filtered.filter(t => t.statut === status);
 
             tasksList.innerHTML = '';
             
@@ -681,28 +826,28 @@
             }
 
             filtered.forEach(task => {
-                const project = allProjects.find(p => String(p.id) === String(task.projectId));
-                const assignee = allMembers.find(m => String(m.email) === String(task.assignee));
+                const project = localData.projects.find(p => String(p.id) === String(task.projectid));
+                const assignee = localData.members.find(m => String(m.email) === String(task.assignéeà));
                 const canEdit = currentUser.role === 'Administrateur' || 
                                (currentUser.role === 'Responsable Projet' && 
-                                accessibleProjects.find(p => String(p.id) === String(task.projectId)));
+                                accessibleProjects.find(p => String(p.id) === String(task.projectid)));
 
                 tasksList.innerHTML += `
                     <div class="task-card">
                         <div style="display: flex; justify-content: space-between;">
                             <div style="flex: 1;">
-                                <h6 style="margin: 0 0 6px 0;">${escapeHtml(task.name)}</h6>
-                                <small class="text-muted">${escapeHtml(project ? project.name : 'Projet')}</small><br>
+                                <h6 style="margin: 0 0 6px 0;">${escapeHtml(task.nom)}</h6>
+                                <small class="text-muted">${escapeHtml(project ? project.nom : 'Projet')}</small><br>
                                 ${task.description ? `<small>Description: ${escapeHtml(task.description)}</small><br>` : ''}
-                                <small>Assigné à: ${escapeHtml(assignee ? assignee.name : task.assignee)}</small><br>
-                                <small>Dates: ${task.startDate || '-'} au ${task.endDate || '-'}</small>
+                                <small>Assigné à: ${escapeHtml(assignee ? assignee.nom : task.assignéeà)}</small><br>
+                                <small>Dates: ${formatDate(task.datedebut) || '-'} au ${formatDate(task.datefin) || '-'}</small>
                             </div>
                             <div>
-                                <span class="badge-priority" style="background: ${task.priority === 'Haute' ? '#dc3545' : task.priority === 'Moyenne' ? '#ffc107' : '#28a745'}">
-                                    ${task.priority}
+                                <span class="badge-priority" style="background: ${task.priorité === 'Haute' ? '#dc3545' : task.priorité === 'Moyenne' ? '#ffc107' : '#28a745'}">
+                                    ${task.priorité}
                                 </span><br>
-                                <span class="badge ms-1 mt-1" style="background: ${task.status === 'Terminé' ? '#28a745' : task.status === 'En cours' ? '#007bff' : '#6c757d'}; color: #fff;">
-                                    ${task.status}
+                                <span class="badge ms-1 mt-1" style="background: ${task.statut === 'Terminé' ? '#28a745' : task.statut === 'En cours' ? '#007bff' : '#6c757d'}; color: #fff;">
+                                    ${task.statut}
                                 </span>
                             </div>
                         </div>
@@ -731,40 +876,40 @@
         accessibleProjects.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.textContent = p.name;
+            opt.textContent = p.nom;
             taskProject.appendChild(opt);
         });
 
         const taskAssignee = document.getElementById('taskAssignee');
         taskAssignee.innerHTML = '<option value="">Sélectionner un membre</option>';
-        allMembers.forEach(m => {
+        localData.members.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.email;
-            opt.textContent = m.name;
+            opt.textContent = m.nom;
             taskAssignee.appendChild(opt);
         });
     }
 
-    async function loadMembers() {
+    function loadMembers() {
         const membersTable = document.getElementById('membersTable');
         membersTable.innerHTML = '';
 
-        let displayMembers = allMembers;
+        let displayMembers = localData.members;
         if (currentUser.role === 'Responsable Projet') {
             const projectIds = new Set(accessibleProjects.map(p => String(p.id)));
-            const memberEmails = new Set(allTasks.filter(t => projectIds.has(String(t.projectId))).map(t => String(t.assignee)));
-            displayMembers = allMembers.filter(m => memberEmails.has(String(m.email)));
+            const memberEmails = new Set(localData.tasks.filter(t => projectIds.has(String(t.projectid))).map(t => String(t.assignéeà)));
+            displayMembers = localData.members.filter(m => memberEmails.has(String(m.email)));
         }
 
         displayMembers.forEach(member => {
-            const memberTasks = allTasks.filter(t => String(t.assignee) === String(member.email));
+            const memberTasks = localData.tasks.filter(t => String(t.assignéeà) === String(member.email));
             const canEdit = currentUser.role === 'Administrateur';
 
             membersTable.innerHTML += `
                 <tr>
-                    <td>${escapeHtml(member.name)}</td>
+                    <td>${escapeHtml(member.nom)}</td>
                     <td>${escapeHtml(member.email)}</td>
-                    <td>${escapeHtml(member.role)}</td>
+                    <td>${escapeHtml(member.rôle)}</td>
                     <td>${memberTasks.length}</td>
                     <td>
                         ${canEdit ? `
@@ -781,25 +926,22 @@
         });
     }
 
-    async function loadAdmin() {
+    function loadAdmin() {
         if (!currentUser || currentUser.role !== 'Administrateur') {
             Swal.fire('Accès refusé', 'Vous n\'avez pas accès à cette section', 'error');
             return;
         }
 
-        const usersRes = await api(DATA_API_URL, 'getUsers');
-        allUsers = Array.isArray(usersRes) ? usersRes : (usersRes.users || allUsers);
-
         const usersList = document.getElementById('usersList');
         usersList.innerHTML = '';
 
-        allUsers.forEach(u => {
+        localData.users.forEach(u => {
             usersList.innerHTML += `
                 <div class="card mb-2">
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <strong>${escapeHtml(u.email)}</strong><br>
-                            <small class="text-muted">${escapeHtml(u.role || '')}</small>
+                            <small class="text-muted">${escapeHtml(u.rôle || '')}</small>
                         </div>
                         <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.email}')">
                             <i class="bi bi-trash"></i>
@@ -809,19 +951,24 @@
             `;
         });
 
-        document.getElementById('usersCount').textContent = allUsers.length;
-        document.getElementById('membersCount').textContent = allMembers.length;
-        document.getElementById('projectsCount').textContent = allProjects.length;
-        document.getElementById('tasksCount').textContent = allTasks.length;
+        document.getElementById('usersCount').textContent = localData.users.length;
+        document.getElementById('membersCount').textContent = localData.members.length;
+        document.getElementById('projectsCount').textContent = localData.projects.length;
+        document.getElementById('tasksCount').textContent = localData.tasks.length;
+        updateSyncTime();
     }
 
     /*****************************************************************
-     * ACTIONS CRUD
+     * ACTIONS CRUD (LOCALES + SYNCHRO)
      *****************************************************************/
     document.getElementById('saveProjectBtn').addEventListener('click', saveProject);
     document.getElementById('saveTaskBtn').addEventListener('click', saveTask);
     document.getElementById('saveMemberBtn').addEventListener('click', saveMember);
     document.getElementById('saveUserBtn').addEventListener('click', saveUser);
+
+    function generateId() {
+        return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
 
     async function saveProject() {
         const name = document.getElementById('projectName').value.trim();
@@ -836,23 +983,35 @@
         }
 
         try {
-            const res = await api(DATA_API_URL, 'addProject', 'GET', { 
-                name, 
-                description, 
-                startDate, 
-                endDate, 
-                manager 
+            const newProject = {
+                id: generateId(),
+                nom: name,
+                description: description,
+                datedébut: startDate,
+                datefin: endDate,
+                manager: manager
+            };
+
+            // Ajouter localement
+            localData.projects.push(newProject);
+            saveLocalData();
+
+            // Ajouter à la file d'attente de synchro
+            addPendingChange('addProject', {
+                name: name,
+                description: description,
+                startDate: startDate,
+                endDate: endDate,
+                manager: manager
             });
+
+            Swal.fire('Succès', 'Projet créé avec succès', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
+            document.getElementById('projectForm').reset();
             
-            if (res && res.success) {
-                Swal.fire('Succès', 'Projet créé avec succès', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
-                document.getElementById('projectForm').reset();
-                await loadAllData();
-                showView('projects');
-            } else {
-                Swal.fire('Erreur', res.error || 'Erreur lors de la création du projet', 'error');
-            }
+            // Mettre à jour l'affichage
+            showView('projects');
+            
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
@@ -874,26 +1033,41 @@
         }
 
         try {
-            const res = await api(DATA_API_URL, 'addTask', 'GET', { 
-                name, 
-                description, 
-                projectId, 
-                assignee, 
-                status, 
-                priority, 
-                startDate, 
-                endDate 
+            const newTask = {
+                id: generateId(),
+                nom: name,
+                description: description,
+                projectid: projectId,
+                assignéeà: assignee,
+                statut: status,
+                priorité: priority,
+                datedebut: startDate,
+                datefin: endDate
+            };
+
+            // Ajouter localement
+            localData.tasks.push(newTask);
+            saveLocalData();
+
+            // Ajouter à la file d'attente de synchro
+            addPendingChange('addTask', {
+                name: name,
+                description: description,
+                projectId: projectId,
+                assignee: assignee,
+                status: status,
+                priority: priority,
+                startDate: startDate,
+                endDate: endDate
             });
+
+            Swal.fire('Succès', 'Tâche créée avec succès', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+            document.getElementById('taskForm').reset();
             
-            if (res && res.success) {
-                Swal.fire('Succès', 'Tâche créée avec succès', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
-                document.getElementById('taskForm').reset();
-                await loadAllData();
-                showView('tasks');
-            } else {
-                Swal.fire('Erreur', res.error || 'Erreur lors de la création de la tâche', 'error');
-            }
+            // Mettre à jour l'affichage
+            showView('tasks');
+            
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
@@ -910,21 +1084,31 @@
         }
 
         try {
-            const res = await api(DATA_API_URL, 'addMember', 'GET', { 
-                name, 
-                email, 
-                role 
+            const newMember = {
+                id: generateId(),
+                nom: name,
+                email: email,
+                rôle: role
+            };
+
+            // Ajouter localement
+            localData.members.push(newMember);
+            saveLocalData();
+
+            // Ajouter à la file d'attente de synchro
+            addPendingChange('addMember', {
+                name: name,
+                email: email,
+                role: role
             });
+
+            Swal.fire('Succès', 'Membre ajouté avec succès', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
+            document.getElementById('memberForm').reset();
             
-            if (res && res.success) {
-                Swal.fire('Succès', 'Membre ajouté avec succès', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
-                document.getElementById('memberForm').reset();
-                await loadAllData();
-                showView('members');
-            } else {
-                Swal.fire('Erreur', res.error || 'Erreur lors de l\'ajout du membre', 'error');
-            }
+            // Mettre à jour l'affichage
+            showView('members');
+            
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
@@ -941,20 +1125,30 @@
         }
 
         try {
-            const res = await api(DATA_API_URL, 'addUser', 'GET', { 
-                email, 
-                code, 
-                role 
+            const newUser = {
+                email: email,
+                code: code,
+                rôle: role
+            };
+
+            // Ajouter localement
+            localData.users.push(newUser);
+            saveLocalData();
+
+            // Ajouter à la file d'attente de synchro
+            addPendingChange('addUser', {
+                email: email,
+                code: code,
+                role: role
             });
+
+            Swal.fire('Succès', 'Utilisateur créé avec succès', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+            document.getElementById('userForm').reset();
             
-            if (res && res.success) {
-                Swal.fire('Succès', 'Utilisateur créé avec succès', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-                document.getElementById('userForm').reset();
-                await loadAdmin();
-            } else {
-                Swal.fire('Erreur', res.error || 'Erreur lors de la création de l\'utilisateur', 'error');
-            }
+            // Mettre à jour l'affichage
+            loadAdmin();
+            
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
@@ -963,29 +1157,61 @@
     async function deleteProject(projectId) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api(DATA_API_URL, 'deleteProject', 'GET', { id: projectId });
-        if (res && res.success) { await loadAllData(); showView('projects'); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
+        
+        // Supprimer localement
+        localData.projects = localData.projects.filter(p => p.id !== projectId);
+        saveLocalData();
+
+        // Ajouter à la file d'attente de synchro
+        addPendingChange('deleteProject', { id: projectId });
+
+        showView('projects');
+        Swal.fire('Succès', 'Projet supprimé', 'success');
     }
 
     async function deleteTask(taskId) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api(DATA_API_URL, 'deleteTask', 'GET', { id: taskId });
-        if (res && res.success) { await loadAllData(); showView('tasks'); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
+        
+        // Supprimer localement
+        localData.tasks = localData.tasks.filter(t => t.id !== taskId);
+        saveLocalData();
+
+        // Ajouter à la file d'attente de synchro
+        addPendingChange('deleteTask', { id: taskId });
+
+        showView('tasks');
+        Swal.fire('Succès', 'Tâche supprimée', 'success');
     }
 
     async function deleteMember(memberId) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api(DATA_API_URL, 'deleteMember', 'GET', { id: memberId });
-        if (res && res.success) { await loadAllData(); showView('members'); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
+        
+        // Supprimer localement
+        localData.members = localData.members.filter(m => m.id !== memberId);
+        saveLocalData();
+
+        // Ajouter à la file d'attente de synchro
+        addPendingChange('deleteMember', { id: memberId });
+
+        showView('members');
+        Swal.fire('Succès', 'Membre supprimé', 'success');
     }
 
     async function deleteUser(email) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
         if (!confirmed.isConfirmed) return;
-        const res = await api(DATA_API_URL, 'deleteUser', 'GET', { email });
-        if (res && res.success) { await loadAdmin(); } else Swal.fire('Erreur', res.error || 'Impossible de supprimer');
+        
+        // Supprimer localement
+        localData.users = localData.users.filter(u => u.email !== email);
+        saveLocalData();
+
+        // Ajouter à la file d'attente de synchro
+        addPendingChange('deleteUser', { email: email });
+
+        loadAdmin();
+        Swal.fire('Succès', 'Utilisateur supprimé', 'success');
     }
 
     function editProject(projectId) { Swal.fire('Info', 'Modification en cours de développement', 'info'); }
@@ -996,12 +1222,12 @@
      * INITIALISATION
      *****************************************************************/
     window.addEventListener('load', async () => {
-        const saved = localStorage.getItem('currentUser');
-        if (saved) {
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
             try { 
-                currentUser = JSON.parse(saved); 
-                showApp(); 
-                await loadAllData(); 
+                currentUser = JSON.parse(savedUser); 
+                loadLocalData();
+                showApp();
             } catch (e) { 
                 console.warn('session parse error', e); 
                 localStorage.removeItem('currentUser'); 
@@ -1017,6 +1243,16 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR');
+        } catch (e) {
+            return dateString;
+        }
     }
     </script>
 </body>
