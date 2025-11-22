@@ -330,9 +330,9 @@
         <div class="modal-header"><h5 class="modal-title">Ajouter un utilisateur système</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
             <form id="userForm">
-                <div class="mb-3"><label class="form-label">Email *</label><input id="userEmail" type="email" class="form-control" required></div>
-                <div class="mb-3"><label class="form-label">Code d'accès *</label><input id="userCode" class="form-control" required></div>
-                <div class="mb-3"><label class="form-label">Rôle *</label><select id="userRole" class="form-select" required><option>Utilisateur</option><option>Responsable Projet</option><option>Administrateur</option></select></div>
+                <div class="mb-3"><label class="form-label">Email *</label><input id="userEmail" type="email" class="form-control" placeholder="exemple@email.com" required></div>
+                <div class="mb-3"><label class="form-label">Code d'accès *</label><input id="userCode" type="password" class="form-control" placeholder="Code de connexion" required></div>
+                <div class="mb-3"><label class="form-label">Rôle *</label><select id="userRole" class="form-select" required><option value="">Sélectionner un rôle</option><option>Utilisateur</option><option>Responsable Projet</option><option>Administrateur</option></select></div>
             </form>
         </div>
         <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button class="btn btn-primary" id="saveUserBtn">Enregistrer</button></div>
@@ -344,6 +344,7 @@
      *****************************************************************/
     const AUTH_API_URL = 'https://script.google.com/macros/s/AKfycbybESlz7o1UL0NZHM6zCO0SdZWw8o3RrQxF1a8x_EMZ-m8l5iiRqHg9A94uwMZJmlHsMQ/exec';
     const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbwDyhV3_v1mciIkytxu5P0X0JDhqVkHx6vmdx2i6OLkVD4BzReNgRLQn5beQPEiPEi_jw/exec';
+
     /*****************************************************************
      * ÉTAT GLOBAL + STOCKAGE LOCAL
      *****************************************************************/
@@ -576,9 +577,13 @@
                 url += '&' + params.toString();
             }
 
+            console.log('API Call URL:', url);
+
             const options = { method: 'GET' };
             const resp = await fetch(url, options);
             const text = await resp.text();
+            
+            console.log('API Response:', text);
             
             try {
                 return JSON.parse(text);
@@ -586,7 +591,10 @@
                 if (text.includes('success') || text.includes('true')) {
                     return { success: true };
                 }
-                return { success: false, error: 'Réponse non JSON' };
+                if (text.includes('error') || text.includes('false')) {
+                    return { success: false, error: 'Erreur serveur' };
+                }
+                return { success: false, error: 'Réponse non JSON: ' + text };
             }
         } catch (error) {
             console.error('API Error:', error);
@@ -1230,14 +1238,25 @@
     }
 
     async function saveUser() {
-        // CORRECTION : Utiliser le bon ID pour l'email
+        // CORRECTION : Utiliser le bon ID pour l'email et vérifier que le rôle est sélectionné
         const email = document.getElementById('userEmail').value.trim();
         const code = document.getElementById('userCode').value.trim();
         const role = document.getElementById('userRole').value;
 
-        if (!email || !code || !role) { 
-            Swal.fire('Erreur', 'Remplissez tous les champs', 'error'); 
-            return; 
+        console.log('Données utilisateur:', { email, code, role });
+
+        // CORRECTION : Vérification plus complète des champs
+        if (!email) {
+            Swal.fire('Erreur', 'L\'email est obligatoire', 'error');
+            return;
+        }
+        if (!code) {
+            Swal.fire('Erreur', 'Le code d\'accès est obligatoire', 'error');
+            return;
+        }
+        if (!role) {
+            Swal.fire('Erreur', 'Le rôle est obligatoire', 'error');
+            return;
         }
 
         try {
@@ -1286,6 +1305,7 @@
             document.getElementById('userForm').reset();
             
         } catch (err) {
+            console.error('Erreur sauvegarde utilisateur:', err);
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
         }
     }
