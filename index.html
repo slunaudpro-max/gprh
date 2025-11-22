@@ -343,11 +343,12 @@
      * CONFIGURATION
      *****************************************************************/
     const AUTH_API_URL = 'https://script.google.com/macros/s/AKfycbybESlz7o1UL0NZHM6zCO0SdZWw8o3RrQxF1a8x_EMZ-m8l5iiRqHg9A94uwMZJmlHsMQ/exec';
-    const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbwDyhV3_v1mciIkytxu5P0X0JDhqVkHx6vmdx2i6OLkVD4BzReNgRLQn5beQPEiPEi_jw/exec';   
+    const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbwDyhV3_v1mciIkytxu5P0X0JDhqVkHx6vmdx2i6OLkVD4BzReNgRLQn5beQPEiPEi_jw/exec'; 
     /*****************************************************************
      * ÉTAT GLOBAL + STOCKAGE LOCAL
      *****************************************************************/
     let currentUser = null;
+    let currentView = 'dashboard';
     let localData = {
         projects: [],
         tasks: [],
@@ -420,28 +421,56 @@
                 apiCall(DATA_API_URL, 'getUsers')
             ]);
 
-            // Mettre à jour les données locales
+            console.log('Données reçues du serveur:', {
+                projects: serverProjects?.length,
+                tasks: serverTasks?.length,
+                members: serverMembers?.length,
+                users: serverUsers?.length
+            });
+
+            // Mettre à jour les données locales AVANT d'appliquer les changements en attente
             localData.projects = serverProjects || [];
             localData.tasks = serverTasks || [];
             localData.members = serverMembers || [];
             localData.users = serverUsers || [];
-            localData.lastSync = new Date().toISOString();
 
             // Appliquer les changements en attente
             await applyPendingChanges();
+
+            // Maintenant recharger les données fraîches du serveur pour s'assurer d'avoir tout
+            const [freshProjects, freshTasks, freshMembers, freshUsers] = await Promise.all([
+                apiCall(DATA_API_URL, 'getProjects'),
+                apiCall(DATA_API_URL, 'getTasks'),
+                apiCall(DATA_API_URL, 'getMembers'),
+                apiCall(DATA_API_URL, 'getUsers')
+            ]);
+
+            // Utiliser les données fraîches
+            localData.projects = freshProjects || [];
+            localData.tasks = freshTasks || [];
+            localData.members = freshMembers || [];
+            localData.users = freshUsers || [];
+            
+            localData.lastSync = new Date().toISOString();
+            localData.pendingChanges = []; // Vider la file d'attente après synchro réussie
 
             saveLocalData();
             updateSyncTime();
             showSyncStatus('Synchronisation réussie!', 'success');
             
-            // Recharger l'affichage
-            if (currentView) {
-                showView(currentView);
-            }
+            console.log('Données après synchro:', {
+                projects: localData.projects.length,
+                tasks: localData.tasks.length,
+                members: localData.members.length,
+                users: localData.users.length
+            });
+            
+            // Forcer le rechargement de la vue actuelle
+            forceRefreshData();
             
         } catch (error) {
             console.error('Erreur synchronisation:', error);
-            showSyncStatus('Erreur de synchronisation', 'error');
+            showSyncStatus('Erreur de synchronisation: ' + error.message, 'error');
         } finally {
             showLoading(false);
         }
@@ -450,25 +479,35 @@
     async function applyPendingChanges() {
         if (localData.pendingChanges.length === 0) return;
 
+        console.log(`Application de ${localData.pendingChanges.length} changements en attente`);
+        
         const results = [];
         for (const change of localData.pendingChanges) {
             try {
+                console.log('Application changement:', change.action, change.data);
                 const result = await apiCall(DATA_API_URL, change.action, change.data);
                 results.push({ success: true, change, result });
+                console.log('Changement appliqué avec succès:', change.action);
             } catch (error) {
+                console.error('Erreur application changement:', change.action, error);
                 results.push({ success: false, change, error });
             }
         }
 
-        // Filtrer les changements qui ont échoué
-        localData.pendingChanges = localData.pendingChanges.filter((change, index) => 
-            !results[index].success
-        );
-
-        console.log(`${results.filter(r => r.success).length} changements synchronisés`);
-        if (localData.pendingChanges.length > 0) {
-            console.log(`${localData.pendingChanges.length} changements en attente`);
+        // Vider la file d'attente seulement si tous les changements ont réussi
+        const allSuccess = results.every(r => r.success);
+        if (allSuccess) {
+            localData.pendingChanges = [];
+            console.log('Tous les changements ont été synchronisés');
+        } else {
+            // Garder seulement les changements qui ont échoué
+            localData.pendingChanges = localData.pendingChanges.filter((change, index) => 
+                !results[index].success
+            );
+            console.log(`${results.filter(r => r.success).length} changements synchronisés, ${localData.pendingChanges.length} échecs`);
         }
+        
+        saveLocalData();
     }
 
     function addPendingChange(action, data) {
@@ -502,6 +541,22 @@
                 statusDiv.remove();
             }
         }, 3000);
+    }
+
+    function forceRefreshData() {
+        console.log('Rafraîchissement forcé des données');
+        determineAccessibleProjects();
+        
+        // Réinitialiser les sélecteurs
+        const projectFilter = document.getElementById('projectFilter');
+        if (projectFilter) {
+            projectFilter.innerHTML = '<option value="">Tous les projets</option>';
+        }
+        
+        // Forcer le rechargement de la vue actuelle
+        if (currentView) {
+            showView(currentView, true);
+        }
     }
 
     /*****************************************************************
@@ -587,8 +642,6 @@
     /*****************************************************************
      * INTERFACE UTILISATEUR
      *****************************************************************/
-    let currentView = 'dashboard';
-
     function showApp() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
@@ -622,9 +675,9 @@
             });
         });
 
-        document.getElementById('syncBtn').addEventListener('click', (ev) => {
+        document.getElementById('syncBtn').addEventListener('click', async (ev) => {
             ev.preventDefault();
-            syncWithServer();
+            await syncWithServer();
         });
 
         document.getElementById('logoutBtn').addEventListener('click', (ev) => {
@@ -633,7 +686,7 @@
         });
     }
 
-    function showView(viewName) {
+    function showView(viewName, forceRefresh = false) {
         currentView = viewName;
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         const viewEl = document.getElementById(viewName);
@@ -653,6 +706,11 @@
         };
         document.getElementById('viewTitle').textContent = titles[viewName] || 'Vue';
 
+        // Forcer le recalcul des projets accessibles
+        if (forceRefresh) {
+            determineAccessibleProjects();
+        }
+
         // Utiliser les données locales pour un affichage instantané
         if (viewName === 'dashboard') loadDashboard();
         if (viewName === 'projects') loadProjects();
@@ -667,6 +725,7 @@
 
     function logout() {
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('projectManagerData');
         currentUser = null;
         location.reload();
     }
@@ -684,7 +743,7 @@
             accessibleProjects = localData.projects.filter(p => String(p.manager) === String(currentUser.email));
             return;
         }
-        const projectIds = new Set(localData.tasks.filter(t => String(t.assignee) === String(currentUser.email)).map(t => String(t.projectid)));
+        const projectIds = new Set(localData.tasks.filter(t => String(t.assignéeà) === String(currentUser.email)).map(t => String(t.projectid)));
         accessibleProjects = localData.projects.filter(p => projectIds.has(String(p.id)));
     }
 
@@ -695,7 +754,7 @@
             const ids = new Set(accessibleProjects.map(p => String(p.id)));
             return localData.tasks.filter(t => ids.has(String(t.projectid)));
         }
-        return localData.tasks.filter(t => String(t.assignee) === String(currentUser.email));
+        return localData.tasks.filter(t => String(t.assignéeà) === String(currentUser.email));
     }
 
     /*****************************************************************
@@ -704,7 +763,7 @@
     function loadDashboard() {
         determineAccessibleProjects();
         const accessibleTasks = getAccessibleTasks();
-        const userTasks = accessibleTasks.filter(t => String(t.assignee) === String(currentUser.email));
+        const userTasks = accessibleTasks.filter(t => String(t.assignéeà) === String(currentUser.email));
         
         document.getElementById('projectCount').textContent = accessibleProjects.length;
         document.getElementById('taskCount').textContent = userTasks.length;
@@ -797,8 +856,19 @@
     }
 
     function loadTasks() {
+        console.log('Chargement des tâches, données disponibles:', {
+            projects: localData.projects.length,
+            tasks: localData.tasks.length,
+            members: localData.members.length,
+            accessibleProjects: accessibleProjects.length
+        });
+
         determineAccessibleProjects();
         const accessibleTasks = getAccessibleTasks();
+        
+        console.log('Tâches accessibles:', accessibleTasks.length);
+        console.log('Tâches complètes:', accessibleTasks);
+
         const tasksList = document.getElementById('tasksList');
         const projectFilter = document.getElementById('projectFilter');
 
@@ -996,6 +1066,10 @@
             localData.projects.push(newProject);
             saveLocalData();
 
+            // Mettre à jour l'affichage IMMÉDIATEMENT
+            determineAccessibleProjects();
+            showView('projects');
+
             // Ajouter à la file d'attente de synchro
             addPendingChange('addProject', {
                 name: name,
@@ -1005,12 +1079,22 @@
                 manager: manager
             });
 
-            Swal.fire('Succès', 'Projet créé avec succès', 'success');
+            Swal.fire({
+                title: 'Succès', 
+                text: 'Projet créé avec succès',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'OK',
+                cancelButtonText: 'Synchroniser maintenant'
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    // L'utilisateur a cliqué sur "Synchroniser maintenant"
+                    syncWithServer();
+                }
+            });
+
             bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
             document.getElementById('projectForm').reset();
-            
-            // Mettre à jour l'affichage
-            showView('projects');
             
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
@@ -1049,6 +1133,10 @@
             localData.tasks.push(newTask);
             saveLocalData();
 
+            // Mettre à jour l'affichage IMMÉDIATEMENT
+            determineAccessibleProjects();
+            showView('tasks');
+
             // Ajouter à la file d'attente de synchro
             addPendingChange('addTask', {
                 name: name,
@@ -1061,12 +1149,22 @@
                 endDate: endDate
             });
 
-            Swal.fire('Succès', 'Tâche créée avec succès', 'success');
+            Swal.fire({
+                title: 'Succès', 
+                text: 'Tâche créée avec succès',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'OK',
+                cancelButtonText: 'Synchroniser maintenant'
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    // L'utilisateur a cliqué sur "Synchroniser maintenant"
+                    syncWithServer();
+                }
+            });
+
             bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
             document.getElementById('taskForm').reset();
-            
-            // Mettre à jour l'affichage
-            showView('tasks');
             
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
@@ -1095,6 +1193,9 @@
             localData.members.push(newMember);
             saveLocalData();
 
+            // Mettre à jour l'affichage IMMÉDIATEMENT
+            showView('members');
+
             // Ajouter à la file d'attente de synchro
             addPendingChange('addMember', {
                 name: name,
@@ -1102,12 +1203,22 @@
                 role: role
             });
 
-            Swal.fire('Succès', 'Membre ajouté avec succès', 'success');
+            Swal.fire({
+                title: 'Succès', 
+                text: 'Membre ajouté avec succès',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'OK',
+                cancelButtonText: 'Synchroniser maintenant'
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    // L'utilisateur a cliqué sur "Synchroniser maintenant"
+                    syncWithServer();
+                }
+            });
+
             bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
             document.getElementById('memberForm').reset();
-            
-            // Mettre à jour l'affichage
-            showView('members');
             
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
@@ -1135,6 +1246,9 @@
             localData.users.push(newUser);
             saveLocalData();
 
+            // Mettre à jour l'affichage IMMÉDIATEMENT
+            loadAdmin();
+
             // Ajouter à la file d'attente de synchro
             addPendingChange('addUser', {
                 email: email,
@@ -1142,12 +1256,22 @@
                 role: role
             });
 
-            Swal.fire('Succès', 'Utilisateur créé avec succès', 'success');
+            Swal.fire({
+                title: 'Succès', 
+                text: 'Utilisateur créé avec succès',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'OK',
+                cancelButtonText: 'Synchroniser maintenant'
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    // L'utilisateur a cliqué sur "Synchroniser maintenant"
+                    syncWithServer();
+                }
+            });
+
             bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
             document.getElementById('userForm').reset();
-            
-            // Mettre à jour l'affichage
-            loadAdmin();
             
         } catch (err) {
             Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
@@ -1162,10 +1286,13 @@
         localData.projects = localData.projects.filter(p => p.id !== projectId);
         saveLocalData();
 
+        // Mettre à jour l'affichage
+        determineAccessibleProjects();
+        showView('projects');
+
         // Ajouter à la file d'attente de synchro
         addPendingChange('deleteProject', { id: projectId });
 
-        showView('projects');
         Swal.fire('Succès', 'Projet supprimé', 'success');
     }
 
@@ -1177,10 +1304,13 @@
         localData.tasks = localData.tasks.filter(t => t.id !== taskId);
         saveLocalData();
 
+        // Mettre à jour l'affichage
+        determineAccessibleProjects();
+        showView('tasks');
+
         // Ajouter à la file d'attente de synchro
         addPendingChange('deleteTask', { id: taskId });
 
-        showView('tasks');
         Swal.fire('Succès', 'Tâche supprimée', 'success');
     }
 
@@ -1192,10 +1322,12 @@
         localData.members = localData.members.filter(m => m.id !== memberId);
         saveLocalData();
 
+        // Mettre à jour l'affichage
+        showView('members');
+
         // Ajouter à la file d'attente de synchro
         addPendingChange('deleteMember', { id: memberId });
 
-        showView('members');
         Swal.fire('Succès', 'Membre supprimé', 'success');
     }
 
@@ -1207,10 +1339,12 @@
         localData.users = localData.users.filter(u => u.email !== email);
         saveLocalData();
 
+        // Mettre à jour l'affichage
+        loadAdmin();
+
         // Ajouter à la file d'attente de synchro
         addPendingChange('deleteUser', { email: email });
 
-        loadAdmin();
         Swal.fire('Succès', 'Utilisateur supprimé', 'success');
     }
 
