@@ -1244,78 +1244,71 @@
     }
 
     async function saveUser() {
-        // CORRECTION : Utiliser le bon ID pour l'email et vérifier que le rôle est sélectionné
-        const email = document.getElementById('userEmail').value.trim();
-        const code = document.getElementById('userCode').value.trim();
-        const roleSelect = document.getElementById('userRole');
-        const role = roleSelect.value;
+    const email = document.getElementById('userEmail').value.trim();
+    const code = document.getElementById('userCode').value.trim();
+    const roleSelect = document.getElementById('userRole');
+    const role = roleSelect.value;
 
-        console.log('Données utilisateur:', { email, code, role });
+    // Correction : garantir que le select a bien une valeur mise à jour
+    roleSelect.blur();
 
-        // CORRECTION : Vérification plus complète des champs
-        if (!email) {
-            Swal.fire('Erreur', 'L\'email est obligatoire', 'error');
-            return;
-        }
-        if (!code) {
-            Swal.fire('Erreur', 'Le code d\'accès est obligatoire', 'error');
-            return;
-        }
-        if (!role) {
-            Swal.fire('Erreur', 'Le rôle est obligatoire', 'error');
-            return;
-        }
-
-        try {
-            const newUser = {
-                email: email,
-                code: code,
-                rôle: role
-            };
-
-            // Vérifier si l'utilisateur existe déjà
-            const existingUser = localData.users.find(u => u.email === email);
-            if (existingUser) {
-                Swal.fire('Erreur', 'Un utilisateur avec cet email existe déjà', 'error');
-                return;
-            }
-
-            // Ajouter localement
-            localData.users.push(newUser);
-            saveLocalData();
-
-            // Mettre à jour l'affichage IMMÉDIATEMENT
-            loadAdmin();
-
-            // Ajouter à la file d'attente de synchro
-            addPendingChange('addUser', {
-                email: email,
-                code: code,
-                role: role
-            });
-
-            Swal.fire({
-                title: 'Succès', 
-                text: 'Utilisateur créé avec succès',
-                icon: 'success',
-                showCancelButton: true,
-                confirmButtonText: 'OK',
-                cancelButtonText: 'Synchroniser maintenant'
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    // L'utilisateur a cliqué sur "Synchroniser maintenant"
-                    syncWithServer();
-                }
-            });
-
-            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-            document.getElementById('userForm').reset();
-            
-        } catch (err) {
-            console.error('Erreur sauvegarde utilisateur:', err);
-            Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
-        }
+    if (!email) {
+        Swal.fire('Erreur', 'L\'email est obligatoire', 'error');
+        return;
     }
+    if (!code) {
+        Swal.fire('Erreur', 'Le code d\'accès est obligatoire', 'error');
+        return;
+    }
+    if (!role || role === "") {
+        Swal.fire('Erreur', 'Le rôle est obligatoire', 'error');
+        return;
+    }
+
+    try {
+        const newUser = {
+            email: email,
+            code: code,
+            rôle: role
+        };
+
+        const existingUser = localData.users.find(u => u.email === email);
+        if (existingUser) {
+            Swal.fire('Erreur', 'Un utilisateur avec cet email existe déjà', 'error');
+            return;
+        }
+
+        localData.users.push(newUser);
+        saveLocalData();
+        loadAdmin();
+
+        addPendingChange('addUser', {
+            email: email,
+            code: code,
+            role: role
+        });
+
+        Swal.fire({
+            title: 'Succès',
+            text: 'Utilisateur créé avec succès',
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: 'OK',
+            cancelButtonText: 'Synchroniser maintenant'
+        }).then((result) => {
+            if (result.dismiss === Swal.DismissReason.cancel) {
+                syncWithServer();
+            }
+        });
+
+        bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+        document.getElementById('userForm').reset();
+
+    } catch (err) {
+        console.error('Erreur sauvegarde utilisateur:', err);
+        Swal.fire('Erreur', 'Erreur: ' + (err.message || err), 'error');
+    }
+}
 
     async function deleteProject(projectId) {
         const confirmed = await Swal.fire({ title:'Confirmer', text:'Êtes-vous sûr?', icon:'warning', showCancelButton:true, confirmButtonText:'Oui' });
